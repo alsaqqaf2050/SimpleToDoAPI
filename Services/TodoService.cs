@@ -20,7 +20,7 @@ namespace SimpleTodoAPI.Services
 
     public class TodoService : ITodoService
     {
-        // Dependency Injection //
+        // Dependency Injection 
         private readonly ApplicationDbContext _context;
 
         public TodoService(ApplicationDbContext context)
