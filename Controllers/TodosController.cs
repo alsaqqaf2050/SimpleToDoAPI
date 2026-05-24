@@ -1,8 +1,8 @@
-﻿// Controllers/TodosController.cs
-using Microsoft.AspNetCore.Mvc;
-using SimpleTodoAPI.Models;
-using SimpleTodoAPI.Services;
-using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Mvc;
+using SimpleTodoAPI.DTOs;
+using SimpleTodoAPI.Services.Interfaces;
+using SimpleTodoAPI.Helpers;
+using SimpleTodoAPI.DTOs;
 
 namespace SimpleTodoAPI.Controllers
 {
@@ -11,109 +11,183 @@ namespace SimpleTodoAPI.Controllers
     public class TodosController : ControllerBase
     {
         private readonly ITodoService _todoService;
+        private readonly ILogger<TodosController> _logger;
 
-        public TodosController(ITodoService todoService)
+        public TodosController(
+            ITodoService todoService,
+            ILogger<TodosController> logger)
         {
             _todoService = todoService;
+            _logger = logger;
         }
 
+        // =========================================
         // GET: api/todos
+        // =========================================
+        //[HttpGet]
+        //public async Task<IActionResult> GetAll()
+        //{
+        //    var items = await _todoService.GetAllAsync();
+
+        //    //return Ok(new
+        //    //{
+        //    //    success = true,
+        //    //    count = items.Count(),
+        //    //    data = items
+        //    //});
+
+        //    return Ok(new ApiResponse<IEnumerable<TodoResponseDto>>(true,"تم جلب المهام بنجاح",items));
+        //}
+
+        //[HttpGet]
+        //public async Task<IActionResult> GetAll( [FromQuery] TodoQueryParametersDto parameters)
+        //{
+        //    var items = await _todoService.GetAllAsync(parameters);
+
+        //    return Ok(new ApiResponse<IEnumerable<TodoResponseDto>>(true,"تم جلب المهام بنجاح",items));
+        //}
+
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] TodoQueryParametersDto parameters)
         {
-            var items = await _todoService.GetAllAsync();
-            return Ok(items);
+            var result = await _todoService.GetAllAsync(parameters);
+
+            var pagination = new PaginationMetadata
+            {
+                PageNumber = result.PageNumber,
+                PageSize = result.PageSize,
+                TotalRecords = result.TotalRecords,
+                TotalPages = result.TotalPages
+            };
+
+            return Ok(new ApiResponse<IEnumerable<TodoResponseDto>>(true, "تم جلب المهام بنجاح", result.Items, pagination));
         }
 
+        // =========================================
         // GET: api/todos/5
-        [HttpGet("{id}")]
+        // =========================================
+        [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
             var item = await _todoService.GetByIdAsync(id);
+
             if (item == null)
-                return NotFound(new { message = $"العنصر مع المعرف {id} غير موجود" });
-
-            return Ok(item);
-        }
-
-        //// POST: api/todos
-        //[HttpPost]
-        //public async Task<IActionResult> Create([FromBody] TodoItem item)
-        //{
-        //    if (!ModelState.IsValid)
-        //        return BadRequest(ModelState);
-
-        //    var createdItem = await _todoService.CreateAsync(item);
-
-        //    return CreatedAtAction(nameof(GetById),
-        //        new { id = createdItem.Id },
-        //        createdItem);
-        //}
-
-        // ثم استخدمه في الـ Controller
-        [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreateTodoDto dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            // إنشاء كائن TodoItem من DTO
-            var item = new TodoItem
             {
-                Title = dto.Title,
-                Description = dto.Description,
-                IsCompleted = dto.IsCompleted,
-                CreatedDate = DateTime.UtcNow
-                // لا تذكر Id هنا أبداً
-            };
+                //return NotFound(new
+                //{
+                //    success = false,
+                //    message = $"المهمة بالمعرف {id} غير موجودة"
+                //});
 
-            var createdItem = await _todoService.CreateAsync(item);
+                return NotFound(new ApiErrorResponse($"المهمة بالمعرف {id} غير موجودة"));
+            }
 
-            return CreatedAtAction(nameof(GetById), new { id = createdItem.Id }, createdItem);
+            //return Ok(new
+            //{
+            //    success = true,
+            //    data = item
+            //});
+
+            return Ok(new ApiResponse<TodoResponseDto>( true,"تم جلب المهمة بنجاح",item));
         }
 
-        // PUT: api/todos/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] TodoItem item)
+        // =========================================
+        // POST: api/todos
+        // =========================================
+        [HttpPost]
+        public async Task<IActionResult> Create(
+            [FromBody] CreateTodoDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            {
+                //return BadRequest(new
+                //{
+                //    success = false,
+                //    errors = ModelState
+                //});
 
-            var updatedItem = await _todoService.UpdateAsync(id, item);
-            if (updatedItem == null)
-                return NotFound(new { message = $"العنصر مع المعرف {id} غير موجود" });
+                return BadRequest(new ApiErrorResponse("البيانات غير صحيحة",ModelState));
+            }
 
-            return Ok(updatedItem);
+            var createdItem = await _todoService.CreateAsync(dto);
+
+            //return CreatedAtAction(
+            //    nameof(GetById),
+            //    new { id = createdItem.Id },
+            //    new
+            //    {
+            //        success = true,
+            //        message = "تم إنشاء المهمة بنجاح",
+            //        data = createdItem
+            //    });
+
+            return CreatedAtAction( nameof(GetById),new { id = createdItem.Id },new ApiResponse<TodoResponseDto>( true,"تم إنشاء المهمة بنجاح",createdItem));
         }
 
+        // =========================================
+        // PUT: api/todos/5
+        // =========================================
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Update(int id,[FromBody] UpdateTodoDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                //return BadRequest(new
+                //{
+                //    success = false,
+                //    errors = ModelState
+                //});
+
+                return BadRequest(new ApiErrorResponse("البيانات غير صحيحة", ModelState));
+            }
+
+            var updatedItem = await _todoService.UpdateAsync(id, dto);
+
+            if (updatedItem == null)
+            {
+                //return NotFound(new
+                //{
+                //    success = false,
+                //    message = $"المهمة بالمعرف {id} غير موجودة"
+                //});
+
+                return NotFound(new ApiErrorResponse($"المهمة بالمعرف {id} غير موجودة"));
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = "تم تحديث المهمة بنجاح",
+                data = updatedItem
+            });
+        }
+
+        // =========================================
         // DELETE: api/todos/5
-        [HttpDelete("{id}")]
+        // =========================================
+        [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
             var result = await _todoService.DeleteAsync(id);
+
             if (!result)
-                return NotFound(new { message = $"العنصر مع المعرف {id} غير موجود" });
+            {
+                //return NotFound(new
+                //{
+                //    success = false,
+                //    message = $"المهمة بالمعرف {id} غير موجودة"
+                //});
 
-            return NoContent();
+                return NotFound(new ApiErrorResponse($"المهمة بالمعرف {id} غير موجودة"));
+            }
+
+            //return Ok(new
+            //{
+            //    success = true,
+            //    message = "تم حذف المهمة بنجاح"
+            //});
+
+            return Ok(new ApiResponse<object>(true,"تم حذف المهمة بنجاح",null));
         }
-
-        //// GET: api/todos/search?keyword=test
-        //[HttpGet("search")]
-        //public async Task<IActionResult> Search([FromQuery] string keyword)
-        //{
-        //    if (string.IsNullOrWhiteSpace(keyword))
-        //        return BadRequest(new { message = "كلمة البحث مطلوبة" });
-
-        //    var items = await _todoService.SearchAsync(keyword);
-        //    return Ok(items);
-        //}
-
-        //// GET: api/todos/completed
-        //[HttpGet("completed")]
-        //public async Task<IActionResult> GetCompleted()
-        //{
-        //    var items = await _todoService.GetCompletedAsync();
-        //    return Ok(items);
-        //}
     }
 }

@@ -1,19 +1,11 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace SimpleTodoAPI.Models
+﻿namespace SimpleTodoAPI.DTOs
 {
-    public class TodoItem
+    public class TodoResponseDto
     {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-        [Required]
-        [MaxLength(100)]
         public string Title { get; set; } = string.Empty;
 
-        [MaxLength(500)]
         public string Description { get; set; } = string.Empty;
 
         public bool IsCompleted { get; set; }

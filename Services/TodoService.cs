@@ -1,110 +1,222 @@
-// Services/TodoService.cs
-using SimpleTodoAPI.Data;
-using SimpleTodoAPI.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using SimpleTodoAPI.Data;
+using SimpleTodoAPI.DTOs;
+using SimpleTodoAPI.Models;
+using SimpleTodoAPI.Services.Interfaces;
+using SimpleTodoAPI.DTOs;
+using SimpleTodoAPI.Helpers;
+using AutoMapper;
 
 namespace SimpleTodoAPI.Services
 {
-    public interface ITodoService
-    {
-        Task<List<TodoItem>> GetAllAsync();
-        Task<TodoItem?> GetByIdAsync(int id);
-        Task<TodoItem> CreateAsync(TodoItem item);
-        Task<TodoItem?> UpdateAsync(int id, TodoItem item);
-        Task<bool> DeleteAsync(int id);
-        //Task<List<TodoItem>?> SearchAsync(string keyword);
-        //Task<List<TodoItem>?> GetCompletedAsync();
-    }
-
     public class TodoService : ITodoService
     {
-        // Dependency Injection 
         private readonly ApplicationDbContext _context;
 
-        public TodoService(ApplicationDbContext context)
+        // Dependency Injection
+        private readonly ILogger<TodoService> _logger;
+        private readonly IMapper _mapper;
+
+        //public TodoService(ApplicationDbContext context,ILogger<TodoService> logger)
+        //{
+        //    _context = context;
+        //    _logger = logger;
+        //}
+
+        public TodoService(ApplicationDbContext context,ILogger<TodoService> logger,IMapper mapper)
         {
             _context = context;
+            _logger = logger;
+            _mapper = mapper;
         }
 
-        public async Task<List<TodoItem>> GetAllAsync()
-        {
-            return await _context.TodoItems.OrderByDescending(x => x.CreatedDate).ToListAsync();
-        }
+        // ================================
+        // Get All
+        // ================================
 
-        public async Task<TodoItem?> GetByIdAsync(int id)
-        {
-            return await _context.TodoItems.FirstOrDefaultAsync(x => x.Id == id);
-        }
 
-        public async Task<TodoItem> CreateAsync(TodoItem item)
+        //public async Task<IEnumerable<TodoResponseDto>> GetAllAsync()
+        //{
+        //    var items = await _context.TodoItems
+        //        .OrderByDescending(x => x.CreatedDate)
+        //        .ToListAsync();
+
+        //    return items.Select(MapToResponseDto);
+        //}
+
+        public async Task<PagedResult<TodoResponseDto>> GetAllAsync(TodoQueryParametersDto parameters)
         {
-            try
+            var query = _context.TodoItems.AsQueryable();
+
+            // =====================================
+            // Search
+            // =====================================
+            if (!string.IsNullOrWhiteSpace(parameters.Search))
             {
-                item.CreatedDate = DateTime.UtcNow;
+                var search = parameters.Search.Trim();
 
-                _context.TodoItems.Add(item);
-                await _context.SaveChangesAsync();
-
-                return item;
+                query = query.Where(x =>
+                    x.Title.Contains(search) ||
+                    x.Description.Contains(search));
             }
-            catch (Exception ex)
+
+            // =====================================
+            // Filter
+            // =====================================
+            if (parameters.Completed.HasValue)
             {
-                // سجل الخطأ للتصحيح
-                Console.WriteLine($"❌ خطأ في إنشاء المهمة: {ex.Message}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"❗ خطأ داخلي: {ex.InnerException.Message}");
-                }
-                throw;
+                query = query.Where(x =>
+                    x.IsCompleted == parameters.Completed.Value);
             }
+
+            // =====================================
+            // Total Count
+            // =====================================
+            var totalRecords = await query.CountAsync();
+
+            // =====================================
+            // Sorting
+            // =====================================
+            query = query.OrderByDescending(x => x.CreatedDate);
+
+            // =====================================
+            // Pagination
+            // =====================================
+            var items = await query
+                .Skip((parameters.PageNumber - 1)
+                    * parameters.PageSize)
+                .Take(parameters.PageSize)
+                .ToListAsync();
+
+            return new PagedResult<TodoResponseDto>
+            {
+                //// الـ Mapping اليدوي
+                //Items = items.Select(MapToResponseDto),
+
+                // تنظيف الـ Mapping اليدوي
+                Items = _mapper.Map<IEnumerable<TodoResponseDto>>(items),
+                TotalRecords = totalRecords,
+                PageNumber = parameters.PageNumber,
+                PageSize = parameters.PageSize
+            };
         }
 
-        public async Task<TodoItem?> UpdateAsync(int id, TodoItem item)
+        // ================================
+        // Get By Id
+        // ================================
+        public async Task<TodoResponseDto?> GetByIdAsync(int id)
         {
-            var existingItem = await GetByIdAsync(id);
-            if (existingItem == null)
+            var item = await _context.TodoItems
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (item == null)
                 return null;
 
-            // تحديث الحقول فقط إذا تم إرسالها
-            if (!string.IsNullOrEmpty(item.Title))
-                existingItem.Title = item.Title;
+            //// الـ Mapping اليدوي
+            //return MapToResponseDto(item);
 
-            if (!string.IsNullOrEmpty(item.Description))
-                existingItem.Description = item.Description;
 
-            existingItem.IsCompleted = item.IsCompleted;
-            existingItem.UpdatedDate = DateTime.UtcNow;
-
-            _context.TodoItems.Update(existingItem);
-            await _context.SaveChangesAsync();
-
-            return existingItem;
+            // تنظيف الـ Mapping اليدوي
+            return _mapper.Map<TodoResponseDto>(item);
         }
 
+        // ================================
+        // Create
+        // ================================
+        public async Task<TodoResponseDto> CreateAsync(CreateTodoDto dto)
+        {
+            //// الـ Mapping اليدوي
+            //var item = new TodoItem
+            //{
+            //    Title = dto.Title,
+            //    Description = dto.Description,
+            //    IsCompleted = dto.IsCompleted,
+            //    CreatedDate = DateTime.UtcNow
+            //};
+
+            // تنظيف الـ Mapping اليدوي
+            var item = _mapper.Map<TodoItem>(dto);
+            item.CreatedDate = DateTime.UtcNow;
+            /////
+
+            _context.TodoItems.Add(item);
+
+            await _context.SaveChangesAsync();
+
+            //return MapToResponseDto(item);
+
+            return _mapper.Map<TodoResponseDto>(item);
+        }
+
+        // ================================
+        // Update
+        // ================================
+        public async Task<TodoResponseDto?> UpdateAsync(int id, UpdateTodoDto dto)
+        {
+            var item = await _context.TodoItems
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (item == null)
+                return null;
+
+            // تحديث القيم فقط إذا تم إرسالها
+
+            //// الـ Mapping اليدوي
+            //if (dto.Title != null)
+            //    item.Title = dto.Title;
+
+            //if (dto.Description != null)
+            //    item.Description = dto.Description;
+
+            //if (dto.IsCompleted.HasValue)
+            //    item.IsCompleted = dto.IsCompleted.Value;
+
+            // تنظيف الـ Mapping اليدوي
+            _mapper.Map(dto, item);
+
+
+            item.UpdatedDate = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            //return MapToResponseDto(item);
+
+            return _mapper.Map<TodoResponseDto>(item);
+        }
+
+        // ================================
+        // Delete
+        // ================================
         public async Task<bool> DeleteAsync(int id)
         {
-            var item = await GetByIdAsync(id);
+            var item = await _context.TodoItems
+                .FirstOrDefaultAsync(x => x.Id == id);
+
             if (item == null)
                 return false;
 
             _context.TodoItems.Remove(item);
+
             await _context.SaveChangesAsync();
 
             return true;
         }
 
-        //// دالة إضافية للبحث
-        //public async Task<List<TodoItem>> SearchAsync(string keyword)
+        // ================================
+        // Mapper  // لم نعد نحتاجها لانها لان ال MAPPING لم يعد يدويا إنا اليا بإستخدام مكتبة 
+        // Install-Package AutoMapper.Extensions.Microsoft.DependencyInjection
+        // ================================
+        //private static TodoResponseDto MapToResponseDto(TodoItem item)
         //{
-        //    return await _context.TodoItems.Where(x => x.Title.Contains(keyword) || x.Description.Contains(keyword)).ToListAsync();
-        //}
-
-        //// دالة إضافية للحصول على المهام المكتملة
-        //public async Task<List<TodoItem>> GetCompletedAsync()
-        //{
-        //    return await _context.TodoItems.Where(x => x.IsCompleted).ToListAsync();
+        //    return new TodoResponseDto
+        //    {
+        //        Id = item.Id,
+        //        Title = item.Title,
+        //        Description = item.Description,
+        //        IsCompleted = item.IsCompleted,
+        //        CreatedDate = item.CreatedDate,
+        //        UpdatedDate = item.UpdatedDate
+        //    };
         //}
     }
 }
