@@ -1,24 +1,33 @@
 // Data/ApplicationDbContext.cs
 using Microsoft.EntityFrameworkCore;
-using SimpleTodoAPI.Models;
+using SimpleToDoAPI.Models;
 
-namespace SimpleTodoAPI.Data
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+
+namespace SimpleToDoAPI.Data
 {
-    public class ApplicationDbContext : DbContext
+    //public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+    //{
+    //    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+    //        : base(options)
+    //    {
+    //    }
+
+    public class ApplicationDbContext: IdentityDbContext<ApplicationUser>
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-            : base(options)
+        public ApplicationDbContext( DbContextOptions<ApplicationDbContext> options): base(options)
         {
         }
-        
+
         // تمثل الجدول في قاعدة البيانات
         public DbSet<TodoItem> TodoItems { get; set; }
-        
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            
+
             // تكوين الجدول
+
             modelBuilder.Entity<TodoItem>(entity =>
             {
                 entity.ToTable("TodoItems"); // اسم الجدول
@@ -41,6 +50,11 @@ namespace SimpleTodoAPI.Data
                 
                 // إنشاء فهرس للحقل IsCompleted
                 entity.HasIndex(e => e.IsCompleted).HasDatabaseName("IX_TodoItems_IsCompleted");
+
+                // العلاقة مع المستخدم
+
+                //entity.Property(e => e.UserId).IsRequired();
+                entity.HasOne(e => e.User).WithMany(u => u.Todos).HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
             });
             
             // إضافة بيانات أولية (Seed Data)

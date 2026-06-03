@@ -1,4 +1,4 @@
-﻿namespace SimpleTodoAPI.Helpers
+﻿namespace SimpleToDoAPI.Helpers
 {
     public class ApiErrorResponse
     {

@@ -1,8 +1,8 @@
 ﻿using System.Net;
 using System.Text.Json;
-using SimpleTodoAPI.Helpers;
+using SimpleToDoAPI.Helpers;
 
-namespace SimpleTodoAPI.Middleware
+namespace SimpleToDoAPI.Middleware
 {
     public class ExceptionMiddleware
     {

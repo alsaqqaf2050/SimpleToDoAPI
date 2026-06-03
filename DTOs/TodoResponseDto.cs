@@ -1,4 +1,4 @@
-﻿namespace SimpleTodoAPI.DTOs
+﻿namespace SimpleToDoAPI.DTOs
 {
     public class TodoResponseDto
     {

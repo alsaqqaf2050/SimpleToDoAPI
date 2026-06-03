@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace SimpleTodoAPI.Models
+namespace SimpleToDoAPI.Models
 {
     public class TodoItem
     {
@@ -18,8 +18,16 @@ namespace SimpleTodoAPI.Models
 
         public bool IsCompleted { get; set; }
 
-        public DateTime CreatedDate { get; set; }
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedDate { get; set; }
+
+        public string UserId { get; set; } = string.Empty;
+
+        //[ForeignKey(nameof(UserId))]
+        public ApplicationUser User { get; set; } = null!;
+
+        //public string? UserId { get; set; }
+        //public ApplicationUser? User { get; set; }
     }
 }

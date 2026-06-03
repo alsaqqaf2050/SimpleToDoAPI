@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
-using SimpleTodoAPI.DTOs;
-using SimpleTodoAPI.Models;
+using SimpleToDoAPI.DTOs;
+using SimpleToDoAPI.Models;
 
-namespace SimpleTodoAPI.Mapping
+namespace SimpleToDoAPI.Mapping
 {
     public class MappingProfile : Profile
     {

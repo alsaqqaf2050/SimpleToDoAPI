@@ -1,7 +1,7 @@
 ﻿using FluentValidation;
-using SimpleTodoAPI.DTOs;
+using SimpleToDoAPI.DTOs;
 
-namespace SimpleTodoAPI.Validators
+namespace SimpleToDoAPI.Validators
 {
     public class UpdateTodoDtoValidator
         : AbstractValidator<UpdateTodoDto>

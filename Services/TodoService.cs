@@ -1,13 +1,12 @@
 using Microsoft.EntityFrameworkCore;
-using SimpleTodoAPI.Data;
-using SimpleTodoAPI.DTOs;
-using SimpleTodoAPI.Models;
-using SimpleTodoAPI.Services.Interfaces;
-using SimpleTodoAPI.DTOs;
-using SimpleTodoAPI.Helpers;
+using SimpleToDoAPI.Data;
+using SimpleToDoAPI.DTOs;
+using SimpleToDoAPI.Models;
+using SimpleToDoAPI.Services.Interfaces;
+using SimpleToDoAPI.Helpers;
 using AutoMapper;
 
-namespace SimpleTodoAPI.Services
+namespace SimpleToDoAPI.Services
 {
     public class TodoService : ITodoService
     {
@@ -23,7 +22,7 @@ namespace SimpleTodoAPI.Services
         //    _logger = logger;
         //}
 
-        public TodoService(ApplicationDbContext context,ILogger<TodoService> logger,IMapper mapper)
+        public TodoService(ApplicationDbContext context, ILogger<TodoService> logger, IMapper mapper)
         {
             _context = context;
             _logger = logger;

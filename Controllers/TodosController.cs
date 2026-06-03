@@ -1,10 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using SimpleTodoAPI.DTOs;
-using SimpleTodoAPI.Services.Interfaces;
-using SimpleTodoAPI.Helpers;
-using SimpleTodoAPI.DTOs;
+using SimpleToDoAPI.DTOs;
+using SimpleToDoAPI.Services.Interfaces;
+using SimpleToDoAPI.Helpers;
 
-namespace SimpleTodoAPI.Controllers
+namespace SimpleToDoAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -95,8 +94,7 @@ namespace SimpleTodoAPI.Controllers
         // POST: api/todos
         // =========================================
         [HttpPost]
-        public async Task<IActionResult> Create(
-            [FromBody] CreateTodoDto dto)
+        public async Task<IActionResult> Create([FromBody] CreateTodoDto dto)
         {
             if (!ModelState.IsValid)
             {

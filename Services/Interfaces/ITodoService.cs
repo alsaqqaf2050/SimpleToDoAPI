@@ -1,7 +1,7 @@
-﻿using SimpleTodoAPI.DTOs;
-using SimpleTodoAPI.Helpers;
+﻿using SimpleToDoAPI.DTOs;
+using SimpleToDoAPI.Helpers;
 
-namespace SimpleTodoAPI.Services.Interfaces
+namespace SimpleToDoAPI.Services.Interfaces
 {
     public interface ITodoService
     {

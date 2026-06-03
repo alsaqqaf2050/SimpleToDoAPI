@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SimpleTodoAPI.DTOs
+namespace SimpleToDoAPI.DTOs
 {
     public class CreateTodoDto
     {

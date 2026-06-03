@@ -1,15 +1,24 @@
 // Program.cs
 using Microsoft.EntityFrameworkCore;
-using SimpleTodoAPI.Data;
-using SimpleTodoAPI.Services;
-using SimpleTodoAPI.Services.Interfaces;
-using SimpleTodoAPI.Middleware;
-using SimpleTodoAPI.Mapping;
+using SimpleToDoAPI.Data;
+using SimpleToDoAPI.Services.Interfaces;
+using SimpleToDoAPI.Middleware;
+using SimpleToDoAPI.Mapping;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 
 using Microsoft.AspNetCore.Mvc;
-using SimpleTodoAPI.Helpers;
+using SimpleToDoAPI.Helpers;
+using SimpleToDoAPI.Services;
+
+using Microsoft.AspNetCore.Identity;
+using SimpleToDoAPI.Models;
+
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using SimpleToDoAPI.Configurations;
+using System.Text;
+using SimpleToDoAPI.Services.Auth;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +28,62 @@ var builder = WebApplication.CreateBuilder(args);
 
 
 builder.Services.AddControllers();
+
+builder.Services
+    .AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+
+// JWT Settings
+builder.Services.Configure<JwtSettings>(
+    builder.Configuration.GetSection("Jwt"));
+
+        var jwtSettings =
+            builder.Configuration
+                   .GetSection("Jwt")
+                   .Get<JwtSettings>();
+
+        var key =
+            Encoding.UTF8.GetBytes(jwtSettings!.Key);
+
+        builder.Services
+            .AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme =
+                    JwtBearerDefaults.AuthenticationScheme;
+
+                options.DefaultChallengeScheme =
+                    JwtBearerDefaults.AuthenticationScheme;
+
+                options.DefaultScheme =
+                    JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.RequireHttpsMetadata = false;
+
+                options.SaveToken = true;
+
+                options.TokenValidationParameters =
+                    new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+
+                        ValidIssuer = jwtSettings.Issuer,
+
+                        ValidAudience = jwtSettings.Audience,
+
+                        IssuerSigningKey =
+                            new SymmetricSecurityKey(key),
+
+                        ClockSkew = TimeSpan.Zero
+                    };
+            });
+///
 
 // التكامل مع FluentValidation
 builder.Services.AddFluentValidationAutoValidation();
@@ -32,6 +97,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+
 
 
  // Validations
@@ -71,9 +138,15 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 errorNumbersToAdd: null);
         }));
 
+
+/////////////////////////////////////////////////////////////////////////
+///
+// إي خدمة نقوم بإنشائها يجب تسجيلها هنا
 // Register our custom service
 builder.Services.AddScoped<ITodoService, TodoService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
+/////////////////////////////////////////////////////////////////////////
 
 var app = builder.Build();
 
@@ -89,11 +162,11 @@ if (app.Environment.IsDevelopment())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        // التأكد من وجود قاعدة البيانات
-        dbContext.Database.EnsureCreated();
+        //// التأكد من وجود قاعدة البيانات
+        //dbContext.Database.EnsureCreated();
 
         // أو إذا كنت تستخدم الترحيلات (Migrations)
-         //dbContext.Database.Migrate();
+        //dbContext.Database.Migrate();
 
         Console.WriteLine("✅ تم التحقق من قاعدة البيانات والجداول");
     }
@@ -102,7 +175,10 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ExceptionMiddleware>();
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
