@@ -299,6 +299,9 @@ namespace SimpleToDoAPI.Services.Auth
         /// <returns></returns>
         public async Task<bool> RevokeTokenAsync(string refreshToken)
         {
+
+            // في هذه الحالة يتم تمرير الريفرش توكين وعرضه في المتصفح لادخال قيمته ولكن ليست امنه وبذلك سنعتمد على التالية التالية :LogoutAsync()
+
             var token = await _context.RefreshTokens
                 .FirstOrDefaultAsync(x => x.Token == refreshToken);
 
