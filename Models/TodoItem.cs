@@ -24,7 +24,7 @@ namespace SimpleToDoAPI.Models
 
         public string UserId { get; set; } = string.Empty;
 
-        //[ForeignKey(nameof(UserId))]
+        [ForeignKey(nameof(UserId))]
         public ApplicationUser User { get; set; } = null!;
 
         //public string? UserId { get; set; }

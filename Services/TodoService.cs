@@ -5,6 +5,7 @@ using SimpleToDoAPI.Models;
 using SimpleToDoAPI.Services.Interfaces;
 using SimpleToDoAPI.Helpers;
 using AutoMapper;
+using SimpleToDoAPI.Services.Common;
 
 namespace SimpleToDoAPI.Services
 {
@@ -15,6 +16,7 @@ namespace SimpleToDoAPI.Services
         // Dependency Injection
         private readonly ILogger<TodoService> _logger;
         private readonly IMapper _mapper;
+        private readonly ICurrentUserService _currentUser;
 
         //public TodoService(ApplicationDbContext context,ILogger<TodoService> logger)
         //{
@@ -22,11 +24,12 @@ namespace SimpleToDoAPI.Services
         //    _logger = logger;
         //}
 
-        public TodoService(ApplicationDbContext context, ILogger<TodoService> logger, IMapper mapper)
+        public TodoService(ApplicationDbContext context, ILogger<TodoService> logger, IMapper mapper, ICurrentUserService currentUser)
         {
             _context = context;
             _logger = logger;
             _mapper = mapper;
+            _currentUser = currentUser;
         }
 
         // ================================
@@ -46,6 +49,12 @@ namespace SimpleToDoAPI.Services
         public async Task<PagedResult<TodoResponseDto>> GetAllAsync(TodoQueryParametersDto parameters)
         {
             var query = _context.TodoItems.AsQueryable();
+
+            // =====================================
+            // Just CurrentUser Tasks
+            // =====================================
+
+            query = query.Where(x => x.UserId == _currentUser.UserId);
 
             // =====================================
             // Search
@@ -106,7 +115,7 @@ namespace SimpleToDoAPI.Services
         public async Task<TodoResponseDto?> GetByIdAsync(int id)
         {
             var item = await _context.TodoItems
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .FirstOrDefaultAsync(x => x.Id == id && x.UserId == _currentUser.UserId);
 
             if (item == null)
                 return null;
@@ -137,6 +146,21 @@ namespace SimpleToDoAPI.Services
             var item = _mapper.Map<TodoItem>(dto);
             item.CreatedDate = DateTime.UtcNow;
             /////
+            ///
+
+
+            //// نظيفه موقتا لكتابة اسم المستخدم
+            //_logger.LogInformation("Current User Id = {UserId}", _currentUser.UserId);
+            ////
+
+            //item.UserId = "01e65128-2375-4330-9827-5d8228e5b9ab";
+
+            /// حماية 
+            if (string.IsNullOrWhiteSpace(_currentUser.UserId))
+                throw new UnauthorizedAccessException();
+
+            item.UserId = _currentUser.UserId;
+            //
 
             _context.TodoItems.Add(item);
 
@@ -153,7 +177,7 @@ namespace SimpleToDoAPI.Services
         public async Task<TodoResponseDto?> UpdateAsync(int id, UpdateTodoDto dto)
         {
             var item = await _context.TodoItems
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .FirstOrDefaultAsync(x => x.Id == id && x.UserId == _currentUser.UserId);
 
             if (item == null)
                 return null;
@@ -189,7 +213,7 @@ namespace SimpleToDoAPI.Services
         public async Task<bool> DeleteAsync(int id)
         {
             var item = await _context.TodoItems
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .FirstOrDefaultAsync(x => x.Id == id && x.UserId == _currentUser.UserId);
 
             if (item == null)
                 return false;

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SimpleToDoAPI.Data;
 
@@ -11,9 +12,11 @@ using SimpleToDoAPI.Data;
 namespace SimpleToDoAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260608202714_AddPermissions")]
+    partial class AddPermissions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -301,41 +304,6 @@ namespace SimpleToDoAPI.Migrations
                         });
                 });
 
-            modelBuilder.Entity("SimpleToDoAPI.Models.RefreshToken", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("ExpiresOn")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsRevoked")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsUsed")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshTokens");
-                });
-
             modelBuilder.Entity("SimpleToDoAPI.Models.RolePermission", b =>
                 {
                     b.Property<string>("RoleId")
@@ -448,17 +416,6 @@ namespace SimpleToDoAPI.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("SimpleToDoAPI.Models.RefreshToken", b =>
-                {
-                    b.HasOne("SimpleToDoAPI.Models.ApplicationUser", "User")
-                        .WithMany("RefreshTokens")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("SimpleToDoAPI.Models.RolePermission", b =>
                 {
                     b.HasOne("SimpleToDoAPI.Models.Permission", "Permission")
@@ -491,8 +448,6 @@ namespace SimpleToDoAPI.Migrations
 
             modelBuilder.Entity("SimpleToDoAPI.Models.ApplicationUser", b =>
                 {
-                    b.Navigation("RefreshTokens");
-
                     b.Navigation("Todos");
                 });
 

@@ -8,5 +8,11 @@ namespace SimpleToDoAPI.Services.Auth
         Task<AuthResponseDto> RegisterAsync(RegisterDto dto);
 
         Task<AuthResponseDto?> LoginAsync(LoginDto dto);
+
+        Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto dto);
+
+        Task<bool> RevokeTokenAsync(string refreshToken);
+
+        Task<bool> LogoutAsync();
     }
 }

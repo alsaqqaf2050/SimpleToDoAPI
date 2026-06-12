@@ -2,19 +2,21 @@
 using SimpleToDoAPI.DTOs;
 using SimpleToDoAPI.Services.Interfaces;
 using SimpleToDoAPI.Helpers;
+using Microsoft.AspNetCore.Authorization;
+using SimpleToDoAPI.Constants;
 
 namespace SimpleToDoAPI.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
+    [Authorize]
     public class TodosController : ControllerBase
     {
         private readonly ITodoService _todoService;
         private readonly ILogger<TodosController> _logger;
 
-        public TodosController(
-            ITodoService todoService,
-            ILogger<TodosController> logger)
+        // هنا يتم حقن todoService و ال logger تلقائيًا عبر الـ Constructor Injection
+        public TodosController(ITodoService todoService,ILogger<TodosController> logger)
         {
             _todoService = todoService;
             _logger = logger;
@@ -93,6 +95,7 @@ namespace SimpleToDoAPI.Controllers
         // =========================================
         // POST: api/todos
         // =========================================
+        [Authorize(Policy = Policies.TodoCreate)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateTodoDto dto)
         {
@@ -163,6 +166,8 @@ namespace SimpleToDoAPI.Controllers
         // =========================================
         // DELETE: api/todos/5
         // =========================================
+        //[HttpDelete("{id}")]
+        [Authorize(Policy = Policies.TodoDelete)]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
