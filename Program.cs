@@ -84,6 +84,19 @@ builder.Services.Configure<JwtSettings>(
 
                         ClockSkew = TimeSpan.Zero
                     };
+
+                // مؤقتاً
+                options.Events = new JwtBearerEvents
+                {
+                    OnAuthenticationFailed = context =>
+                    {
+                        Console.WriteLine(
+                            context.Exception.Message);
+
+                        return Task.CompletedTask;
+                    }
+                };
+
             });
 ///
 
@@ -129,6 +142,9 @@ builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 
 builder.Services.AddAuthorization(options =>
 {
+
+    // Todos
+
     options.AddPolicy(Policies.AdminOnly,policy => policy.RequireRole("Admin"));
 
     options.AddPolicy(Policies.TodoView, policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Todos.View)));
@@ -138,7 +154,71 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(Policies.TodoUpdate,policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Todos.Update)));
 
     options.AddPolicy(Policies.TodoDelete,policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Todos.Delete)));
+
+
+    // Users
+
+    options.AddPolicy(
+        Policies.UserView,
+        policy => policy.Requirements.Add(
+            new PermissionRequirement(
+                Permissions.Users.View)));
+
+    options.AddPolicy(
+        Policies.UserCreate,
+        policy => policy.Requirements.Add(
+            new PermissionRequirement(
+                Permissions.Users.Create)));
+
+    options.AddPolicy(
+        Policies.UserUpdate,
+        policy => policy.Requirements.Add(
+            new PermissionRequirement(
+                Permissions.Users.Update)));
+
+    options.AddPolicy(
+        Policies.UserDelete,
+        policy => policy.Requirements.Add(
+            new PermissionRequirement(
+                Permissions.Users.Delete)));
+
+
+    // Roles
+
+    options.AddPolicy(
+        Policies.RoleView,
+        policy => policy.Requirements.Add(
+            new PermissionRequirement(
+                Permissions.Roles.View)));
+
+    options.AddPolicy(
+        Policies.RoleCreate,
+        policy => policy.Requirements.Add(
+            new PermissionRequirement(
+                Permissions.Roles.Create)));
+
+    options.AddPolicy(
+        Policies.RoleUpdate,
+        policy => policy.Requirements.Add(
+            new PermissionRequirement(
+                Permissions.Roles.Update)));
+
+    options.AddPolicy(
+        Policies.RoleDelete,
+        policy => policy.Requirements.Add(
+            new PermissionRequirement(
+                Permissions.Roles.Delete)));
+
+    // Audit
+
+    options.AddPolicy(
+        Policies.AuditView,
+        policy => policy.Requirements.Add(
+            new PermissionRequirement(
+                Permissions.Audit.View)));
+
 });
+
 
 ///////
 
@@ -229,7 +309,14 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITodoService, TodoService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICurrentUserService,CurrentUserService>();
+
+builder.Services.AddScoped<IRoleService, RoleService>();
+
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IRolePermissionService, RolePermissionService>();
+builder.Services.AddScoped<IPermissionCacheService, PermissionCacheService>();
+
+builder.Services.AddScoped<IAuditService, AuditService>();
 /////////////////////////////////////////////////////////////////////////
 
 var app = builder.Build();

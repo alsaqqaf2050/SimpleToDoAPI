@@ -155,12 +155,14 @@ namespace SimpleToDoAPI.Controllers
                 return NotFound(new ApiErrorResponse($"المهمة بالمعرف {id} غير موجودة"));
             }
 
-            return Ok(new
-            {
-                success = true,
-                message = "تم تحديث المهمة بنجاح",
-                data = updatedItem
-            });
+            //return Ok(new
+            //{
+            //    success = true,
+            //    message = "تم تحديث المهمة بنجاح",
+            //    data = updatedItem
+            //});
+
+            return Ok(new ApiResponse<TodoResponseDto>( true,"تم تحديث المهمة بنجاح",updatedItem));
         }
 
         // =========================================

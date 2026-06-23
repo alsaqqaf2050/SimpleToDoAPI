@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Text.Json;
+using SimpleToDoAPI.Exceptions;
 using SimpleToDoAPI.Helpers;
 
 namespace SimpleToDoAPI.Middleware
@@ -31,28 +32,67 @@ namespace SimpleToDoAPI.Middleware
             }
         }
 
-        private async Task HandleExceptionAsync(
-            HttpContext context,
-            Exception exception)
+        //private async Task HandleExceptionAsync(
+        //    HttpContext context,
+        //    Exception exception)
+        //{
+        //    context.Response.ContentType = "application/json";
+
+        //    context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+
+        //    //var response = new
+        //    //{
+        //    //    success = false,
+        //    //    message = "حدث خطأ داخلي في الخادم",
+
+        //    //    // إظهار التفاصيل فقط في بيئة التطوير
+        //    //    details = _environment.IsDevelopment()
+        //    //        ? exception.Message
+        //    //        : null
+        //    //};
+
+        //    var response = new ApiErrorResponse("حدث خطأ داخلي في الخادم", _environment.IsDevelopment() ? exception.Message: null);
+
+        //    var jsonResponse = JsonSerializer.Serialize(response);
+
+        //    await context.Response.WriteAsync(jsonResponse);
+        //}
+
+
+
+        private async Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
             context.Response.ContentType = "application/json";
 
-            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            var statusCode = exception switch
+            {
+                BusinessException => HttpStatusCode.BadRequest,
 
-            //var response = new
-            //{
-            //    success = false,
-            //    message = "حدث خطأ داخلي في الخادم",
+                KeyNotFoundException => HttpStatusCode.NotFound,
 
-            //    // إظهار التفاصيل فقط في بيئة التطوير
-            //    details = _environment.IsDevelopment()
-            //        ? exception.Message
-            //        : null
-            //};
+                UnauthorizedAccessException => HttpStatusCode.Unauthorized, _ => HttpStatusCode.InternalServerError
+            };
 
-            var response = new ApiErrorResponse("حدث خطأ داخلي في الخادم", _environment.IsDevelopment() ? exception.Message: null);
+            context.Response.StatusCode = (int)statusCode;
 
-            var jsonResponse = JsonSerializer.Serialize(response);
+            //var response =
+            //    new ApiErrorResponse(
+            //        exception is BusinessException
+            //            ? exception.Message
+            //            : "حدث خطأ داخلي في الخادم",
+
+            //        _environment.IsDevelopment()
+            //            ? exception.Message
+            //            : null);
+
+            var details = _environment.IsDevelopment() ? exception.InnerException?.Message ?? exception.Message : null;
+
+            var response = new ApiErrorResponse(
+                "حدث خطأ داخلي في الخادم",
+                details);
+
+            var jsonResponse =
+                JsonSerializer.Serialize(response);
 
             await context.Response.WriteAsync(jsonResponse);
         }

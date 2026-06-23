@@ -8,6 +8,7 @@ namespace SimpleToDoAPI.Models
 
         public int PermissionId { get; set; }
 
+
         public IdentityRole Role { get; set; } = null!;
 
         public Permission Permission { get; set; } = null!;

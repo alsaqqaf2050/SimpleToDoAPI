@@ -14,5 +14,8 @@ namespace SimpleToDoAPI.Services.Auth
         Task<bool> RevokeTokenAsync(string refreshToken);
 
         Task<bool> LogoutAsync();
+
+        // دالة لجلب صلاحيات المستخدم الحالي
+        Task<CurrentUserDto?> GetCurrentUserAsync();
     }
 }

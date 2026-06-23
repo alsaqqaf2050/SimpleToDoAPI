@@ -127,6 +127,15 @@ namespace SimpleToDoAPI.Services.Auth
                 };
             }
 
+            if (user.IsDeleted || !user.IsActive)
+            {
+                return new AuthResponseDto
+                {
+                    IsSuccess = false,
+                    Message = "الحساب غير متاح"
+                };
+            }
+
             return await GenerateTokenAsync(user);
         }
 
@@ -171,18 +180,28 @@ namespace SimpleToDoAPI.Services.Auth
 
             var roles = await _userManager.GetRolesAsync(user);
 
-            foreach (var role in roles)
-            {
-                userClaims.Add(new Claim(ClaimTypes.Role, role));
-            }
 
-            var permissions = await _permissionService.GetPermissionsAsync(user.Id);
+            // بدل تخزين permissions داخل التوكن: نقوم بإنشاء ال Permission Cache Service
+            //foreach (var role in roles)
+            //{
+            //    userClaims.Add(new Claim(ClaimTypes.Role, role));
+            //}
 
-            foreach (var permission in permissions)
-            {
-                userClaims.Add(new Claim("permission", permission));
-            }
 
+            ////    إضافة Permissions داخل JWT.
+            //var permissions = await _permissionService.GetPermissionsAsync(user.Id);
+
+            //foreach (var permission in permissions)
+            //{
+            //    userClaims.Add(new Claim("permission", permission));
+            //}
+
+            //
+            // لا نقوم بتخزين Permissions داخل JWT
+            //
+            // سيتم جلبها ديناميكياً من
+            // PermissionCacheService
+            //
 
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
@@ -245,11 +264,64 @@ namespace SimpleToDoAPI.Services.Auth
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
+        //public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto dto)
+        //{
+        //    var oldToken = await _context.RefreshTokens.Include(x => x.User).FirstOrDefaultAsync(x => x.Token == dto.RefreshToken);
+
+        //    if (oldToken == null)
+        //    {
+        //        return new AuthResponseDto
+        //        {
+        //            IsSuccess = false,
+        //            Message = "Refresh Token غير صالح"
+        //        };
+        //    }
+
+        //    if (oldToken.IsRevoked)
+        //    {
+        //        return new AuthResponseDto
+        //        {
+        //            IsSuccess = false,
+        //            Message = "Refresh Token ملغي"
+        //        };
+        //    }
+
+        //    if (oldToken.IsUsed)
+        //    {
+        //        return new AuthResponseDto
+        //        {
+        //            IsSuccess = false,
+        //            Message = "Refresh Token مستخدم مسبقاً"
+        //        };
+        //    }
+
+        //    if (oldToken.ExpiresOn <= DateTime.UtcNow)
+        //    {
+        //        return new AuthResponseDto
+        //        {
+        //            IsSuccess = false,
+        //            Message = "Refresh Token منتهي الصلاحية"
+        //        };
+        //    }
+
+        //    //if (oldToken == null || oldToken.IsRevoked || oldToken.IsUsed || oldToken.ExpiresOn <= DateTime.UtcNow)
+        //    //    return Unauthorized();
+
+        //    oldToken.IsUsed = true;
+
+        //    await _context.SaveChangesAsync();
+
+        //    return await GenerateTokenAsync(oldToken.User);
+        //}
+
+
         public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto dto)
         {
-            var refreshToken = await _context.RefreshTokens.Include(x => x.User).FirstOrDefaultAsync(x => x.Token == dto.RefreshToken);
+            // 1. جلب التوكن من قاعدة البيانات
+            var oldToken = await _context.RefreshTokens.Include(x => x.User).FirstOrDefaultAsync(x => x.Token == dto.RefreshToken);
 
-            if (refreshToken == null)
+            // 2. التحقق من وجوده
+            if (oldToken == null)
             {
                 return new AuthResponseDto
                 {
@@ -258,7 +330,8 @@ namespace SimpleToDoAPI.Services.Auth
                 };
             }
 
-            if (refreshToken.IsRevoked)
+            // 3. التحقق من الحالة الأمنية
+            if (oldToken.IsRevoked)
             {
                 return new AuthResponseDto
                 {
@@ -267,7 +340,7 @@ namespace SimpleToDoAPI.Services.Auth
                 };
             }
 
-            if (refreshToken.IsUsed)
+            if (oldToken.IsUsed)
             {
                 return new AuthResponseDto
                 {
@@ -276,7 +349,7 @@ namespace SimpleToDoAPI.Services.Auth
                 };
             }
 
-            if (refreshToken.ExpiresOn <= DateTime.UtcNow)
+            if (oldToken.ExpiresOn <= DateTime.UtcNow)
             {
                 return new AuthResponseDto
                 {
@@ -285,11 +358,41 @@ namespace SimpleToDoAPI.Services.Auth
                 };
             }
 
-            refreshToken.IsUsed = true;
+            // 4. إلغاء التوكن القديم (Rotation)
+            oldToken.IsUsed = true;
+
+            // 5. إنشاء Refresh Token جديد
+            var newRefreshTokenValue = GenerateRefreshToken();
+
+            var newRefreshToken = new RefreshToken
+            {
+                Token = newRefreshTokenValue,
+                UserId = oldToken.UserId,
+                CreatedOn = DateTime.UtcNow,
+                ExpiresOn = DateTime.UtcNow.AddDays(7),
+                IsUsed = false,
+                IsRevoked = false
+            };
+
+            // 🔥 مهم جداً: ربط التوكن الجديد بالقديم
+            oldToken.ReplacedByToken = newRefreshTokenValue;
+
+            // 6. حفظ التوكن الجديد
+            _context.RefreshTokens.Add(newRefreshToken);
 
             await _context.SaveChangesAsync();
 
-            return await GenerateTokenAsync(refreshToken.User);
+            // 7. إنشاء Access Token جديد
+            var response = await GenerateTokenAsync(oldToken.User);
+
+            return new AuthResponseDto
+            {
+                IsSuccess = true,
+                Message = "تم تحديث التوكن بنجاح",
+                Token = response.Token,
+                RefreshToken = newRefreshTokenValue,
+                Expiration = response.Expiration
+            };
         }
 
         /// <summary>
@@ -342,6 +445,42 @@ namespace SimpleToDoAPI.Services.Auth
 
             return true;
         }
+
+
+        /// <summary>
+        /// دالة تقوم بجلب صلاحيات المستخدم الحالي
+        /// </summary>
+        /// <returns></returns>
+        public async Task<CurrentUserDto?> GetCurrentUserAsync()
+        {
+            var userId = _currentUser.UserId;
+
+            if (string.IsNullOrWhiteSpace(userId))
+                return null;
+
+            var user =
+                await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+                return null;
+
+            var roles =
+                await _userManager.GetRolesAsync(user);
+
+            var permissions =
+                await _permissionService
+                    .GetPermissionsAsync(user.Id);
+
+            return new CurrentUserDto
+            {
+                UserId = user.Id,
+                UserName = user.UserName ?? "",
+                Roles = roles.ToList(),
+                Permissions = permissions.ToList()
+            };
+        }
+
+
 
     }
 }

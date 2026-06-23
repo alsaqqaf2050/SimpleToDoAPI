@@ -12,11 +12,6 @@ namespace SimpleToDoAPI.Services.Common
             _httpContextAccessor = httpContextAccessor;
         }
 
-        public string UserId =>
-            _httpContextAccessor
-                .HttpContext?
-                .User?
-                .FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? string.Empty;
+        public string UserId => _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier)?? string.Empty;
     }
 }

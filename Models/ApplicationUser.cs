@@ -7,9 +7,16 @@ namespace SimpleToDoAPI.Models
         public string FullName { get; set; } = string.Empty;
 
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+       
+        public bool IsActive { get; set; } = true;
+
+        public bool IsDeleted { get; set; }
+
+        public DateTime? DeletedDate { get; set; }
 
         public ICollection<TodoItem> Todos { get; set; } = new List<TodoItem>();
 
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
     }
 }

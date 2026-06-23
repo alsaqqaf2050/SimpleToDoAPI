@@ -22,10 +22,25 @@ namespace SimpleToDoAPI.Data
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
 
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // التعديل على جدول المستخدمين وتفعيل ال Soft Delete
+            // اي استعلام  _userManager.Users سيصبح مباشرا  WHERE IsDeleted = 0
+            modelBuilder.Entity<ApplicationUser>(entity =>
+            {
+                //entity.ToTable("ApplicationUser");
+
+                entity.HasQueryFilter(x => !x.IsDeleted);
+
+                entity.Property(x => x.IsActive).HasDefaultValue(true);
+
+                entity.Property(x => x.IsDeleted).HasDefaultValue(false);
+            });
+
 
             // إنشاء جدول المهام
 
@@ -148,7 +163,8 @@ namespace SimpleToDoAPI.Data
             modelBuilder.Entity<RefreshToken>(entity =>
             {
                 entity.HasKey(x => x.Id);
-                entity.Property(x => x.Token).IsRequired();
+                entity.Property(x => x.Token).IsRequired().HasMaxLength(500);
+                entity.HasIndex(x => x.Token).IsUnique();
                 entity.HasOne(x => x.User).WithMany(x => x.RefreshTokens).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 

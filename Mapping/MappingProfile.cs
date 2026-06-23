@@ -1,5 +1,7 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Identity;
 using SimpleToDoAPI.DTOs;
+using SimpleToDoAPI.DTOs.Roles;
 using SimpleToDoAPI.Models;
 
 namespace SimpleToDoAPI.Mapping
@@ -22,6 +24,11 @@ namespace SimpleToDoAPI.Mapping
             // UpdateTodoDto -> TodoItem
             // =====================================
             CreateMap<UpdateTodoDto, TodoItem>();
+
+            // =====================================
+            // IdentityRole -> RoleResponseDto
+            // =====================================
+            CreateMap<IdentityRole, RoleResponseDto>();
         }
     }
 }

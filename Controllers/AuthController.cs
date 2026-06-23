@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SimpleToDoAPI.Constants;
 using SimpleToDoAPI.DTOs.Auth;
+using SimpleToDoAPI.Helpers;
 using SimpleToDoAPI.Services.Auth;
 
 namespace SimpleToDoAPI.Controllers
@@ -163,6 +164,35 @@ namespace SimpleToDoAPI.Controllers
             {
                 Message = "تم تسجيل الخروج بنجاح"
             });
+        }
+
+
+        /// <summary>
+        /// دالة تقوم بجلب صلاحيات المستخدم الحالي
+        /// </summary>
+        /// <returns></returns>
+        [Authorize]
+        [HttpGet("me")]
+        public async Task<IActionResult> Me()
+        {
+            var result =
+                await _authService
+                    .GetCurrentUserAsync();
+
+            if (result == null)
+            {
+                return NotFound(
+                    new ApiErrorResponse(
+                        "المستخدم غير موجود"));
+            }
+
+            return Ok(
+                new ApiResponse<CurrentUserDto>
+                (
+                    true,
+                    "تم جلب بيانات المستخدم",
+                    result
+                ));
         }
 
 
