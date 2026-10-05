@@ -25,8 +25,13 @@ using SimpleToDoAPI.Infrastructure.Audit;
 using SimpleToDoAPI.Data.Seeders;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ─── Serilog ──────────────────────────────────────────────────
+builder.Host.UseSerilog((context, configuration) =>
+    configuration.ReadFrom.Configuration(context.Configuration));
 
 // ─── Caching ──────────────────────────────────────────────────
 builder.Services.AddMemoryCache();
@@ -278,6 +283,8 @@ using (var scope = app.Services.CreateScope())
 
 // ─── Middleware Pipeline ───────────────────────────────────────
 app.UseMiddleware<ExceptionMiddleware>();
+
+app.UseSerilogRequestLogging();
 
 if (app.Environment.IsDevelopment())
 {
