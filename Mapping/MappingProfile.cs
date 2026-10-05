@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using SimpleToDoAPI.DTOs;
 using SimpleToDoAPI.DTOs.Roles;
@@ -13,7 +13,8 @@ namespace SimpleToDoAPI.Mapping
             // =====================================
             // TodoItem -> TodoResponseDto
             // =====================================
-            CreateMap<TodoItem, TodoResponseDto>();
+            CreateMap<TodoItem, TodoResponseDto>()
+                .ForMember(dest => dest.AssignedToUserName, opt => opt.MapFrom(src => src.AssignedToUser != null ? src.AssignedToUser.FullName : null));
 
             // =====================================
             // CreateTodoDto -> TodoItem

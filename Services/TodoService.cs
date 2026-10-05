@@ -51,10 +51,9 @@ namespace SimpleToDoAPI.Services
             var query = _context.TodoItems.AsQueryable();
 
             // =====================================
-            // Just CurrentUser Tasks
+            // Just CurrentUser Tasks or Assigned Tasks
             // =====================================
-
-            query = query.Where(x => x.UserId == _currentUser.UserId);
+            query = query.Where(x => x.UserId == _currentUser.UserId || x.AssignedToUserId == _currentUser.UserId);
 
             // =====================================
             // Search
@@ -88,11 +87,11 @@ namespace SimpleToDoAPI.Services
             query = query.OrderByDescending(x => x.CreatedDate);
 
             // =====================================
-            // Pagination
+            // Pagination & Includes
             // =====================================
             var items = await query
-                .Skip((parameters.PageNumber - 1)
-                    * parameters.PageSize)
+                .Include(x => x.AssignedToUser)
+                .Skip((parameters.PageNumber - 1) * parameters.PageSize)
                 .Take(parameters.PageSize)
                 .ToListAsync();
 
@@ -115,7 +114,8 @@ namespace SimpleToDoAPI.Services
         public async Task<TodoResponseDto?> GetByIdAsync(int id)
         {
             var item = await _context.TodoItems
-                .FirstOrDefaultAsync(x => x.Id == id && x.UserId == _currentUser.UserId);
+                .Include(x => x.AssignedToUser)
+                .FirstOrDefaultAsync(x => x.Id == id && (x.UserId == _currentUser.UserId || x.AssignedToUserId == _currentUser.UserId));
 
             if (item == null)
                 return null;
@@ -160,7 +160,12 @@ namespace SimpleToDoAPI.Services
                 throw new UnauthorizedAccessException();
 
             item.UserId = _currentUser.UserId;
-            //
+            
+            // تعيين المهمة للمستخدم الحالي إذا لم يتم تحديد مستخدم آخر
+            if (string.IsNullOrWhiteSpace(item.AssignedToUserId))
+            {
+                item.AssignedToUserId = _currentUser.UserId;
+            }
 
             _context.TodoItems.Add(item);
 
@@ -177,7 +182,8 @@ namespace SimpleToDoAPI.Services
         public async Task<TodoResponseDto?> UpdateAsync(int id, UpdateTodoDto dto)
         {
             var item = await _context.TodoItems
-                .FirstOrDefaultAsync(x => x.Id == id && x.UserId == _currentUser.UserId);
+                .Include(x => x.AssignedToUser)
+                .FirstOrDefaultAsync(x => x.Id == id && (x.UserId == _currentUser.UserId || x.AssignedToUserId == _currentUser.UserId));
 
             if (item == null)
                 return null;
@@ -213,7 +219,7 @@ namespace SimpleToDoAPI.Services
         public async Task<bool> DeleteAsync(int id)
         {
             var item = await _context.TodoItems
-                .FirstOrDefaultAsync(x => x.Id == id && x.UserId == _currentUser.UserId);
+                .FirstOrDefaultAsync(x => x.Id == id && x.UserId == _currentUser.UserId); // Only creator can delete
 
             if (item == null)
                 return false;

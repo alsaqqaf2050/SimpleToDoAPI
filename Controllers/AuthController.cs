@@ -1,5 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SimpleToDoAPI.Constants;
 using SimpleToDoAPI.DTOs.Auth;
 using SimpleToDoAPI.Helpers;
@@ -20,6 +21,7 @@ namespace SimpleToDoAPI.Controllers
         }
 
         [HttpPost("register")]
+        [EnableRateLimiting("AuthPolicy")]
         public async Task<IActionResult> Register(RegisterDto dto)
         {
             var result = await _authService.RegisterAsync(dto);
@@ -31,6 +33,7 @@ namespace SimpleToDoAPI.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting("AuthPolicy")]
         public async Task<IActionResult> Login(LoginDto dto)
         {
             var result = await _authService.LoginAsync(dto);
@@ -70,31 +73,11 @@ namespace SimpleToDoAPI.Controllers
         //}
 
 
-        // إنشاء صلاحيات للأدمن
         [Authorize(Policy = Policies.AdminOnly)]
         [HttpGet("admin-only")]
         public IActionResult AdminOnly()
         {
             return Ok(new { Message = "Welcome Admin" });
-        }
-
-
-        //// إنشاء صلاحيات للمستخدم
-        //[Authorize(Roles = "User")]
-        //[HttpGet("user-only")]
-        //public IActionResult UserOnly()
-        //{
-        //    return Ok(new{ Message = "Welcome User"});
-        //}
-
-        // لإضافة الصلاحيات  Policies
-        // الفائدة من ال Polices جميع قواعد الصلاحيات تصبح في مكان مركزي واحد
-        // بدلا من ال Roles
-        [Authorize(Policy = "UserOnly")]
-        [HttpGet("user-area")]
-        public IActionResult UserArea()
-        {
-            return Ok("User Area");
         }
 
 

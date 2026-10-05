@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace SimpleToDoAPI.DTOs
 {
@@ -12,5 +12,7 @@ namespace SimpleToDoAPI.DTOs
         public string Description { get; set; } = string.Empty;
 
         public bool IsCompleted { get; set; }
+
+        public string? AssignedToUserId { get; set; }
     }
 }

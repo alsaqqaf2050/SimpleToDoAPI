@@ -427,6 +427,9 @@ namespace SimpleToDoAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AssignedToUserId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<DateTime>("CreatedDate")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -453,6 +456,8 @@ namespace SimpleToDoAPI.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AssignedToUserId");
 
                     b.HasIndex("IsCompleted")
                         .HasDatabaseName("IX_TodoItems_IsCompleted");
@@ -548,11 +553,17 @@ namespace SimpleToDoAPI.Migrations
 
             modelBuilder.Entity("SimpleToDoAPI.Models.TodoItem", b =>
                 {
+                    b.HasOne("SimpleToDoAPI.Models.ApplicationUser", "AssignedToUser")
+                        .WithMany()
+                        .HasForeignKey("AssignedToUserId");
+
                     b.HasOne("SimpleToDoAPI.Models.ApplicationUser", "User")
                         .WithMany("Todos")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("AssignedToUser");
 
                     b.Navigation("User");
                 });

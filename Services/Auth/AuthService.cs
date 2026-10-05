@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SimpleToDoAPI.Configurations;
@@ -105,7 +105,7 @@ namespace SimpleToDoAPI.Services.Auth
         /// <returns></returns>
         public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
         {
-            var user = await _userManager.FindByNameAsync(dto.UserName);
+            var user = await _userManager.FindByNameAsync(dto.UserName) ?? await _userManager.FindByEmailAsync(dto.UserName);
 
             if (user == null)
             {

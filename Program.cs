@@ -22,215 +22,139 @@ using SimpleToDoAPI.Constants;
 using Microsoft.AspNetCore.Authorization;
 using SimpleToDoAPI.Authorization;
 using SimpleToDoAPI.Infrastructure.Audit;
+using SimpleToDoAPI.Data.Seeders;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
-//builder.Services.AddControllers();
-
-
-
+// ─── Controllers ──────────────────────────────────────────────
 builder.Services.AddControllers();
 
+// ─── Identity ─────────────────────────────────────────────────
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-
-// JWT Settings
+// ─── JWT ──────────────────────────────────────────────────────
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("Jwt"));
 
-        var jwtSettings =
-            builder.Configuration
-                   .GetSection("Jwt")
-                   .Get<JwtSettings>();
+var jwtSettings = builder.Configuration
+    .GetSection("Jwt")
+    .Get<JwtSettings>();
 
-        var key =
-            Encoding.UTF8.GetBytes(jwtSettings!.Key);
+var key = Encoding.UTF8.GetBytes(jwtSettings!.Key);
 
-        builder.Services
-            .AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme =
-                    JwtBearerDefaults.AuthenticationScheme;
+builder.Services
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ClockSkew = TimeSpan.Zero
+        };
+    });
 
-                options.DefaultChallengeScheme =
-                    JwtBearerDefaults.AuthenticationScheme;
-
-                options.DefaultScheme =
-                    JwtBearerDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(options =>
-            {
-                options.RequireHttpsMetadata = false;
-
-                options.SaveToken = true;
-
-                options.TokenValidationParameters =
-                    new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-
-                        ValidIssuer = jwtSettings.Issuer,
-
-                        ValidAudience = jwtSettings.Audience,
-
-                        IssuerSigningKey =
-                            new SymmetricSecurityKey(key),
-
-                        ClockSkew = TimeSpan.Zero
-                    };
-
-                // مؤقتاً
-                options.Events = new JwtBearerEvents
-                {
-                    OnAuthenticationFailed = context =>
-                    {
-                        Console.WriteLine(
-                            context.Exception.Message);
-
-                        return Task.CompletedTask;
-                    }
-                };
-
-            });
-///
-
-// التكامل مع FluentValidation
+// ─── FluentValidation ─────────────────────────────────────────
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
-
-// تسجيل الـ Validators
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
-// لإضافة الصلاحيات  Policies
-// الفائدة من ال Polices جميع قواعد الصلاحيات تصبح في مكان مركزي واحد
-// بدلا من ال Roles
-
-//builder.Services.AddAuthorization(options =>
-//{
-//    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-//    options.AddPolicy("UserOnly", policy => policy.RequireRole("User"));
-//    options.AddPolicy("AdminOrUser", policy => policy.RequireRole("Admin", "User"));
-//});
-
-//builder.Services.AddAuthorization(options =>
-//{
-//    options.AddPolicy(Policies.AdminOnly,policy => policy.RequireRole("Admin"));
-//});
-
-//builder.Services.AddAuthorization(options =>
-//{
-//    options.AddPolicy(
-//        "Permissions.Todos.View",
-//        policy =>
-//        {
-//            policy.Requirements.Add(
-//                new PermissionRequirement(
-//                    "Permissions.Todos.View"));
-//        });
-//});
-
-//builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
-
-//بدل AddSingleton الأفضل  لأنه يعتمد على HttpContext/User per request.
+// ─── Authorization + Permission Policies ──────────────────────
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy(Policies.AdminOnly, policy => policy.RequireRole("Admin"));
 
     // Todos
-
-    options.AddPolicy(Policies.AdminOnly,policy => policy.RequireRole("Admin"));
-
-    options.AddPolicy(Policies.TodoView, policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Todos.View)));
-
-    options.AddPolicy(Policies.TodoCreate,policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Todos.Create)));
-
-    options.AddPolicy(Policies.TodoUpdate,policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Todos.Update)));
-
-    options.AddPolicy(Policies.TodoDelete,policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Todos.Delete)));
-
+    options.AddPolicy(Policies.TodoView,   policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Todos.View)));
+    options.AddPolicy(Policies.TodoCreate, policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Todos.Create)));
+    options.AddPolicy(Policies.TodoUpdate, policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Todos.Update)));
+    options.AddPolicy(Policies.TodoDelete, policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Todos.Delete)));
 
     // Users
-
-    options.AddPolicy(
-        Policies.UserView,
-        policy => policy.Requirements.Add(
-            new PermissionRequirement(
-                Permissions.Users.View)));
-
-    options.AddPolicy(
-        Policies.UserCreate,
-        policy => policy.Requirements.Add(
-            new PermissionRequirement(
-                Permissions.Users.Create)));
-
-    options.AddPolicy(
-        Policies.UserUpdate,
-        policy => policy.Requirements.Add(
-            new PermissionRequirement(
-                Permissions.Users.Update)));
-
-    options.AddPolicy(
-        Policies.UserDelete,
-        policy => policy.Requirements.Add(
-            new PermissionRequirement(
-                Permissions.Users.Delete)));
-
+    options.AddPolicy(Policies.UserView,   policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Users.View)));
+    options.AddPolicy(Policies.UserCreate, policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Users.Create)));
+    options.AddPolicy(Policies.UserUpdate, policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Users.Update)));
+    options.AddPolicy(Policies.UserDelete, policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Users.Delete)));
 
     // Roles
-
-    options.AddPolicy(
-        Policies.RoleView,
-        policy => policy.Requirements.Add(
-            new PermissionRequirement(
-                Permissions.Roles.View)));
-
-    options.AddPolicy(
-        Policies.RoleCreate,
-        policy => policy.Requirements.Add(
-            new PermissionRequirement(
-                Permissions.Roles.Create)));
-
-    options.AddPolicy(
-        Policies.RoleUpdate,
-        policy => policy.Requirements.Add(
-            new PermissionRequirement(
-                Permissions.Roles.Update)));
-
-    options.AddPolicy(
-        Policies.RoleDelete,
-        policy => policy.Requirements.Add(
-            new PermissionRequirement(
-                Permissions.Roles.Delete)));
+    options.AddPolicy(Policies.RoleView,   policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Roles.View)));
+    options.AddPolicy(Policies.RoleCreate, policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Roles.Create)));
+    options.AddPolicy(Policies.RoleUpdate, policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Roles.Update)));
+    options.AddPolicy(Policies.RoleDelete, policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Roles.Delete)));
 
     // Audit
-
-    options.AddPolicy(
-        Policies.AuditView,
-        policy => policy.Requirements.Add(
-            new PermissionRequirement(
-                Permissions.Audit.View)));
-
+    options.AddPolicy(Policies.AuditView, policy => policy.Requirements.Add(new PermissionRequirement(Permissions.Audit.View)));
 });
 
+// ─── CORS ─────────────────────────────────────────────────────
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendPolicy", policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:5173",   // Vite dev server
+                "http://localhost:3000",   // React dev server (alternative)
+                "http://localhost:4173"    // Vite preview
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
 
-///////
+// ─── Rate Limiting ────────────────────────────────────────────
+builder.Services.AddRateLimiter(options =>
+{
+    // حد عام: 100 طلب/دقيقة لكل IP
+    options.AddFixedWindowLimiter("GlobalPolicy", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 100;
+        opt.QueueLimit = 0;
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
 
+    // حد صارم لـ Auth endpoints: 10 محاولات/دقيقة (حماية من Brute Force)
+    options.AddFixedWindowLimiter("AuthPolicy", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 10;
+        opt.QueueLimit = 0;
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+
+    options.RejectionStatusCode = 429;
+});
+
+// ─── Swagger ──────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
-
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "Simple Todo API",
-        Version = "v1"
+        Version = "v1",
+        Description = "REST API احترافي لإدارة المهام مع نظام صلاحيات متقدم"
     });
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -259,14 +183,13 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+// ─── AutoMapper ───────────────────────────────────────────────
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-
-// التسجيل التلقائي للعمليات في AuditLog
+// ─── Audit Interceptor ────────────────────────────────────────
 builder.Services.AddScoped<AuditSaveChangesInterceptor>();
 
-
-// Validations
+// ─── Validation Response Factory ──────────────────────────────
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
@@ -276,42 +199,15 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
             .Select(x => new
             {
                 Field = x.Key,
-                Errors = x.Value?.Errors
-                    .Select(e => e.ErrorMessage)
+                Errors = x.Value?.Errors.Select(e => e.ErrorMessage)
             });
 
-        var response = new ApiErrorResponse(
-            "Validation Error",
-            errors
-        );
-
+        var response = new ApiErrorResponse("Validation Error", errors);
         return new BadRequestObjectResult(response);
     };
 });
 
-
-// تسجيل DbContext مع SQL Server
-//builder.Services.AddDbContext<ApplicationDbContext>(options =>
-//    options.UseSqlServer(
-//        builder.Configuration.GetConnectionString("DefaultConnection"),
-//        sqlOptions =>
-//        {
-//            sqlOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
-//            sqlOptions.EnableRetryOnFailure(
-//                maxRetryCount: 5,
-//                maxRetryDelay: TimeSpan.FromSeconds(30),
-//                errorNumbersToAdd: null);
-//        })
-//    );
-
-// تسجيل DbContext مع SQL Server
-// لأن الـ Interceptor يعتمد على خدمات مسجلة في DI مثل ICurrentUserService, IHttpContextAccessor
-// وبذلك يستطيع EF Core حقنها تلقائياً.
-
-//✅ EF Core تعرف على الـ Interceptor.
-//✅ الـ DI يعمل بشكل صحيح.
-//✅ أصبح الـ Interceptor جزءاً من دورة حياة SaveChanges()
-
+// ─── DbContext ────────────────────────────────────────────────
 builder.Services.AddDbContext<ApplicationDbContext>(
     (serviceProvider, options) =>
     {
@@ -319,110 +215,90 @@ builder.Services.AddDbContext<ApplicationDbContext>(
             builder.Configuration.GetConnectionString("DefaultConnection"),
             sqlOptions =>
             {
-                sqlOptions.MigrationsAssembly(
-                    typeof(Program).Assembly.FullName);
-
-                sqlOptions.EnableRetryOnFailure(
-                    5,
-                    TimeSpan.FromSeconds(30),
-                    null);
+                sqlOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
+                sqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(30), null);
             });
 
         options.AddInterceptors(
-            serviceProvider.GetRequiredService<
-                AuditSaveChangesInterceptor>());
+            serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>());
     });
-
-
-
 
 builder.Services.AddHttpContextAccessor();
 
-/////////////////////////////////////////////////////////////////////////
-///
-// إي خدمة مرتبطة بواجهه نقوم بإنشائها يجب تسجيلها هنا
-// Register our custom service
+// ─── Health Checks ────────────────────────────────────────────
+builder.Services.AddHealthChecks()
+    .AddSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")!);
+
+// ─── Application Services ─────────────────────────────────────
 builder.Services.AddScoped<ITodoService, TodoService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<ICurrentUserService,CurrentUserService>();
-
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
-
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IRolePermissionService, RolePermissionService>();
 builder.Services.AddScoped<IPermissionCacheService, PermissionCacheService>();
-
 builder.Services.AddScoped<IAuditService, AuditService>();
-/////////////////////////////////////////////////////////////////////////
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
+// ═══════════════════════════════════════════════════════════════
 var app = builder.Build();
+// ═══════════════════════════════════════════════════════════════
 
-// الخاص بمعالجة الأخطاء
+// ─── Database Seeding (تشغيل تلقائي عند بدء التطبيق) ─────────
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var dbContext = services.GetRequiredService<ApplicationDbContext>();
+
+        // تطبيق أي Migrations معلقة تلقائياً
+        await dbContext.Database.MigrateAsync();
+
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+
+        // Seed Roles → Admin User → Permissions
+        await RoleSeeder.SeedRolesAsync(roleManager);
+        await AdminSeeder.SeedAdminAsync(userManager);
+        await PermissionSeeder.SeedPermissionsAsync(roleManager, dbContext);
+
+        Console.WriteLine("✅ تم تهيئة قاعدة البيانات والبيانات الأولية بنجاح");
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "خطأ أثناء تهيئة قاعدة البيانات: {Message}", ex.Message);
+    }
+}
+
+// ─── Middleware Pipeline ───────────────────────────────────────
 app.UseMiddleware<ExceptionMiddleware>();
 
-// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
-
-    //// 🔥 إضافة هذا الكود لإنشاء قاعدة البيانات والجداول
-    //using (var scope = app.Services.CreateScope())
-    //{
-    //    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-    //    //// التأكد من وجود قاعدة البيانات
-    //    //dbContext.Database.EnsureCreated();
-
-    //    // أو إذا كنت تستخدم الترحيلات (Migrations)
-    //    //dbContext.Database.Migrate();
-
-    //    Console.WriteLine("✅ تم التحقق من قاعدة البيانات والجداول");
-    //}
-
-    ///  استدعاء Seeder عند تشغيل التطبيق
-    ///  أول جزء من نظام الصلاحيات
-    //using (var scope = app.Services.CreateScope())
-    //{
-    //    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    //    await RoleSeeder.SeedRolesAsync(roleManager);
-    //}
-
-    ///  استدعاء Seeder عند تشغيل التطبيق
-    ///  أول جزء من نظام الصلاحيات
-    //using (var scope = app.Services.CreateScope())
-    //{
-    //    var services = scope.ServiceProvider;
-
-    //    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-
-    //    await RoleSeeder.SeedRolesAsync(roleManager);
-
-    //    var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-
-    //    await AdminSeeder.SeedAdminAsync(userManager);
-
-    //    var dbContext = services.GetRequiredService<ApplicationDbContext>();
-
-    //    await PermissionSeeder.SeedPermissionsAsync(roleManager,dbContext);
-    //}
-    /////
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Simple Todo API v1");
+        c.RoutePrefix = "swagger";
+    });
 }
-
-
-
-
 
 app.UseHttpsRedirection();
 
+// CORS يجب أن يكون قبل Authentication
+app.UseCors("FrontendPolicy");
+
+app.UseRateLimiter();
+
 app.UseAuthentication();
-
-//// فحص الـ JWT + Permissions في Middleware واحد قبل دخول أي Controller
-//app.UseMiddleware<PermissionMiddleware>();
-
 app.UseAuthorization();
 
+// Health Check endpoint
+app.MapHealthChecks("/health");
+
 app.MapControllers();
-//app.MapControllers().RequireAuthorization();
 
 app.Run();

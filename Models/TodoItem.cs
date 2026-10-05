@@ -27,7 +27,10 @@ namespace SimpleToDoAPI.Models
         [ForeignKey(nameof(UserId))]
         public ApplicationUser User { get; set; } = null!;
 
-        //public string? UserId { get; set; }
-        //public ApplicationUser? User { get; set; }
+        // The user to whom this task is assigned
+        public string? AssignedToUserId { get; set; }
+
+        [ForeignKey(nameof(AssignedToUserId))]
+        public ApplicationUser? AssignedToUser { get; set; }
     }
 }

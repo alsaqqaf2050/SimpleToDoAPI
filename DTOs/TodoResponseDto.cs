@@ -1,4 +1,4 @@
-﻿namespace SimpleToDoAPI.DTOs
+namespace SimpleToDoAPI.DTOs
 {
     public class TodoResponseDto
     {
@@ -13,5 +13,9 @@
         public DateTime CreatedDate { get; set; }
 
         public DateTime? UpdatedDate { get; set; }
+
+        public string? AssignedToUserId { get; set; }
+        
+        public string? AssignedToUserName { get; set; }
     }
 }
