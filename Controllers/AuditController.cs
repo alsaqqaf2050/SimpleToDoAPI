@@ -21,7 +21,7 @@ namespace SimpleToDoAPI.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous]
+        //[AllowAnonymous]
         public async Task<IActionResult> GetLogs(
             [FromQuery]
             AuditQueryParametersDto parameters)

@@ -116,7 +116,7 @@ namespace SimpleToDoAPI.Controllers
         /// <param name="roleId"></param>
         /// <param name="dto"></param>
         /// <returns></returns>
-        [HttpPost("{roleId}/permissions")]
+        [HttpPost("{roleId}/permissions/{permissionId}")]
         [Authorize(Policy = Policies.RoleUpdate)]
         public async Task<IActionResult>
             AssignPermission(

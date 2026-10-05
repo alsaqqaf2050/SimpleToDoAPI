@@ -20,8 +20,11 @@
 //    }
 //}
 
+using SimpleToDoAPI.Infrastructure.Audit;
+
 namespace SimpleToDoAPI.Models
 {
+    [AuditIgnore]
     public class RefreshToken
     {
         public int Id { get; set; }

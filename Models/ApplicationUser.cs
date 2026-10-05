@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using SimpleToDoAPI.Infrastructure.Audit;
 
 namespace SimpleToDoAPI.Models
 {
@@ -6,8 +7,19 @@ namespace SimpleToDoAPI.Models
     {
         public string FullName { get; set; } = string.Empty;
 
+        [AuditIgnore]
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-       
+
+        [AuditIgnore]
+        public override string? ConcurrencyStamp { get; set; }
+
+        [AuditIgnore]
+        public override string? SecurityStamp { get; set; }
+
+        [AuditIgnore]
+        public override string? PasswordHash { get; set; }
+
+
         public bool IsActive { get; set; } = true;
 
         public bool IsDeleted { get; set; }

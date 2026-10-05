@@ -1,5 +1,8 @@
-﻿namespace SimpleToDoAPI.Models
+﻿using SimpleToDoAPI.Infrastructure.Audit;
+
+namespace SimpleToDoAPI.Models
 {
+    [AuditIgnore]
     public class AuditLog
     {
         public long Id { get; set; }

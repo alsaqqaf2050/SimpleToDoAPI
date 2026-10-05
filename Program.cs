@@ -21,6 +21,7 @@ using Microsoft.OpenApi.Models;
 using SimpleToDoAPI.Constants;
 using Microsoft.AspNetCore.Authorization;
 using SimpleToDoAPI.Authorization;
+using SimpleToDoAPI.Infrastructure.Audit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -261,9 +262,11 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 
+// التسجيل التلقائي للعمليات في AuditLog
+builder.Services.AddScoped<AuditSaveChangesInterceptor>();
 
 
- // Validations
+// Validations
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
@@ -288,17 +291,50 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 
 
 // تسجيل DbContext مع SQL Server
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlOptions =>
-        {
-            sqlOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
-            sqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorNumbersToAdd: null);
-        }));
+//builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//    options.UseSqlServer(
+//        builder.Configuration.GetConnectionString("DefaultConnection"),
+//        sqlOptions =>
+//        {
+//            sqlOptions.MigrationsAssembly(typeof(Program).Assembly.FullName);
+//            sqlOptions.EnableRetryOnFailure(
+//                maxRetryCount: 5,
+//                maxRetryDelay: TimeSpan.FromSeconds(30),
+//                errorNumbersToAdd: null);
+//        })
+//    );
+
+// تسجيل DbContext مع SQL Server
+// لأن الـ Interceptor يعتمد على خدمات مسجلة في DI مثل ICurrentUserService, IHttpContextAccessor
+// وبذلك يستطيع EF Core حقنها تلقائياً.
+
+//✅ EF Core تعرف على الـ Interceptor.
+//✅ الـ DI يعمل بشكل صحيح.
+//✅ أصبح الـ Interceptor جزءاً من دورة حياة SaveChanges()
+
+builder.Services.AddDbContext<ApplicationDbContext>(
+    (serviceProvider, options) =>
+    {
+        options.UseSqlServer(
+            builder.Configuration.GetConnectionString("DefaultConnection"),
+            sqlOptions =>
+            {
+                sqlOptions.MigrationsAssembly(
+                    typeof(Program).Assembly.FullName);
+
+                sqlOptions.EnableRetryOnFailure(
+                    5,
+                    TimeSpan.FromSeconds(30),
+                    null);
+            });
+
+        options.AddInterceptors(
+            serviceProvider.GetRequiredService<
+                AuditSaveChangesInterceptor>());
+    });
+
+
+
 
 builder.Services.AddHttpContextAccessor();
 
