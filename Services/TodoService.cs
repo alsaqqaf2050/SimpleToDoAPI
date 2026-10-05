@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using SimpleToDoAPI.Data;
 using SimpleToDoAPI.DTOs;
 using SimpleToDoAPI.Models;
@@ -17,19 +18,15 @@ namespace SimpleToDoAPI.Services
         private readonly ILogger<TodoService> _logger;
         private readonly IMapper _mapper;
         private readonly ICurrentUserService _currentUser;
+        private readonly IMemoryCache _cache;
 
-        //public TodoService(ApplicationDbContext context,ILogger<TodoService> logger)
-        //{
-        //    _context = context;
-        //    _logger = logger;
-        //}
-
-        public TodoService(ApplicationDbContext context, ILogger<TodoService> logger, IMapper mapper, ICurrentUserService currentUser)
+        public TodoService(ApplicationDbContext context, ILogger<TodoService> logger, IMapper mapper, ICurrentUserService currentUser, IMemoryCache cache)
         {
             _context = context;
             _logger = logger;
             _mapper = mapper;
             _currentUser = currentUser;
+            _cache = cache;
         }
 
         // ================================
@@ -133,29 +130,9 @@ namespace SimpleToDoAPI.Services
         // ================================
         public async Task<TodoResponseDto> CreateAsync(CreateTodoDto dto)
         {
-            //// الـ Mapping اليدوي
-            //var item = new TodoItem
-            //{
-            //    Title = dto.Title,
-            //    Description = dto.Description,
-            //    IsCompleted = dto.IsCompleted,
-            //    CreatedDate = DateTime.UtcNow
-            //};
-
-            // تنظيف الـ Mapping اليدوي
             var item = _mapper.Map<TodoItem>(dto);
             item.CreatedDate = DateTime.UtcNow;
-            /////
-            ///
 
-
-            //// نظيفه موقتا لكتابة اسم المستخدم
-            //_logger.LogInformation("Current User Id = {UserId}", _currentUser.UserId);
-            ////
-
-            //item.UserId = "01e65128-2375-4330-9827-5d8228e5b9ab";
-
-            /// حماية 
             if (string.IsNullOrWhiteSpace(_currentUser.UserId))
                 throw new UnauthorizedAccessException();
 
@@ -170,8 +147,8 @@ namespace SimpleToDoAPI.Services
             _context.TodoItems.Add(item);
 
             await _context.SaveChangesAsync();
-
-            //return MapToResponseDto(item);
+            
+            InvalidateDashboardCache(item);
 
             return _mapper.Map<TodoResponseDto>(item);
         }
@@ -188,27 +165,14 @@ namespace SimpleToDoAPI.Services
             if (item == null)
                 return null;
 
-            // تحديث القيم فقط إذا تم إرسالها
-
-            //// الـ Mapping اليدوي
-            //if (dto.Title != null)
-            //    item.Title = dto.Title;
-
-            //if (dto.Description != null)
-            //    item.Description = dto.Description;
-
-            //if (dto.IsCompleted.HasValue)
-            //    item.IsCompleted = dto.IsCompleted.Value;
-
-            // تنظيف الـ Mapping اليدوي
             _mapper.Map(dto, item);
 
 
             item.UpdatedDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-
-            //return MapToResponseDto(item);
+            
+            InvalidateDashboardCache(item);
 
             return _mapper.Map<TodoResponseDto>(item);
         }
@@ -227,8 +191,20 @@ namespace SimpleToDoAPI.Services
             _context.TodoItems.Remove(item);
 
             await _context.SaveChangesAsync();
+            
+            InvalidateDashboardCache(item);
 
             return true;
+        }
+        
+        private void InvalidateDashboardCache(TodoItem item)
+        {
+            _cache.Remove("dashboard_stats_admin");
+            _cache.Remove($"dashboard_stats_{item.UserId}");
+            if (!string.IsNullOrEmpty(item.AssignedToUserId) && item.AssignedToUserId != item.UserId)
+            {
+                _cache.Remove($"dashboard_stats_{item.AssignedToUserId}");
+            }
         }
 
         // ================================

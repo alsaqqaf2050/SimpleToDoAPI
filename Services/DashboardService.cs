@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using SimpleToDoAPI.Constants;
 using SimpleToDoAPI.Data;
 using SimpleToDoAPI.DTOs.Dashboard;
@@ -13,18 +14,27 @@ namespace SimpleToDoAPI.Services
         private readonly ApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IMemoryCache _cache;
 
-        public DashboardService(ApplicationDbContext context, ICurrentUserService currentUserService, IHttpContextAccessor httpContextAccessor)
+        public DashboardService(ApplicationDbContext context, ICurrentUserService currentUserService, IHttpContextAccessor httpContextAccessor, IMemoryCache cache)
         {
             _context = context;
             _currentUserService = currentUserService;
             _httpContextAccessor = httpContextAccessor;
+            _cache = cache;
         }
 
         public async Task<DashboardResponseDto> GetDashboardStatsAsync()
         {
             var isAdmin = _httpContextAccessor.HttpContext?.User?.IsInRole(Roles.Admin) ?? false;
             var userId = _currentUserService.UserId;
+
+            var cacheKey = isAdmin ? "dashboard_stats_admin" : $"dashboard_stats_{userId}";
+
+            if (_cache.TryGetValue(cacheKey, out DashboardResponseDto? cachedStats) && cachedStats != null)
+            {
+                return cachedStats;
+            }
 
             var query = _context.TodoItems.AsQueryable();
 
@@ -59,11 +69,7 @@ namespace SimpleToDoAPI.Services
                 // Tasks associated with this user
                 var userTasks = allTasks.Where(t => t.UserId == u.Id || t.AssignedToUserId == u.Id).ToList();
                 
-                // If we only want to count tasks *assigned* to them:
-                // var assignedTasks = allTasks.Where(t => t.AssignedToUserId == u.Id).ToList();
-                
                 // Let's count tasks they are responsible for (either assigned to them, or created by them if unassigned)
-                // Actually, just considering tasks where they are assigned to, or created if no one is assigned.
                 var relevantTasks = userTasks; 
 
                 // Only add to list if they have tasks, or if they are admin viewing all users
@@ -79,6 +85,12 @@ namespace SimpleToDoAPI.Services
                     });
                 }
             }
+
+            var cacheOptions = new MemoryCacheEntryOptions()
+                .SetSlidingExpiration(TimeSpan.FromMinutes(5))
+                .SetAbsoluteExpiration(TimeSpan.FromHours(1));
+
+            _cache.Set(cacheKey, response, cacheOptions);
 
             return response;
         }

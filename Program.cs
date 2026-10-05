@@ -28,6 +28,9 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ─── Caching ──────────────────────────────────────────────────
+builder.Services.AddMemoryCache();
+
 // ─── Controllers ──────────────────────────────────────────────
 builder.Services.AddControllers();
 
