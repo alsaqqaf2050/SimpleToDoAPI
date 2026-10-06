@@ -1,16 +1,17 @@
 // src/pages/AdminPage.tsx
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Shield, Users, AlertTriangle, Activity, ShieldAlert } from 'lucide-react';
+import { Shield, Users, AlertTriangle, Activity, ShieldAlert, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dashboardService } from '../services/dashboardService';
 
 import UserManagement from '../components/UserManagement';
 import SystemSecurity from '../components/SystemSecurity';
 import AdminDashboard from '../components/AdminDashboard';
+import ContentManagement from '../components/ContentManagement';
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'security'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'security' | 'content'>('dashboard');
 
   const { data: statsData, isLoading: isLoadingStats, error } = useQuery({
     queryKey: ['dashboardStats'],
@@ -61,6 +62,13 @@ export default function AdminPage() {
           >
             <ShieldAlert size={18} /> أدوات الأمان
           </button>
+          <button 
+            className={`btn ${activeTab === 'content' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setActiveTab('content')}
+            style={{ borderRadius: '8px' }}
+          >
+            <FileText size={18} /> إدارة المحتوى
+          </button>
         </div>
       </div>
 
@@ -87,6 +95,16 @@ export default function AdminPage() {
             transition={{ duration: 0.2 }}
           >
             <UserManagement />
+          </motion.div>
+        ) : activeTab === 'content' ? (
+          <motion.div
+            key="content"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ContentManagement />
           </motion.div>
         ) : (
           <motion.div

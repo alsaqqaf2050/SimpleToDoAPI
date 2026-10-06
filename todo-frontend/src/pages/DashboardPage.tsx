@@ -1,11 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { dashboardService } from '../services/dashboardService';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Circle, Users, Briefcase } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useContentStore } from '../store/contentStore';
+import { Megaphone, MessageCircleQuestion, X } from 'lucide-react';
+import { useState } from 'react';
 
 export default function DashboardPage() {
   const user = useAuthStore(state => state.user);
+  const { announcement, faqText } = useContentStore();
+  const [hideAnnouncement, setHideAnnouncement] = useState(false);
   
   const { data: stats, isLoading, isError } = useQuery({
     queryKey: ['dashboard_stats'],
@@ -36,10 +41,48 @@ export default function DashboardPage() {
 
   return (
     <div className="fade-in">
-      <div className="page-header" style={{ marginBottom: '2rem' }}>
-        <h1>لوحة التحكم</h1>
-        <p>مرحباً بك {user?.fullName}، هذه نظرة عامة على أدائك والمهام.</p>
+      
+      {/* Global Announcement Banner */}
+      <AnimatePresence>
+        {announcement && !hideAnnouncement && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }} 
+            animate={{ opacity: 1, height: 'auto' }} 
+            exit={{ opacity: 0, height: 0 }}
+            style={{ marginBottom: '2rem', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(99, 102, 241, 0.1)', padding: '1rem 1.5rem', borderRadius: '12px', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--color-primary)' }}>
+                <Megaphone size={20} />
+                <span style={{ fontWeight: 500 }}>{announcement}</span>
+              </div>
+              <button onClick={() => setHideAnnouncement(true)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
+                <X size={20} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
+        <div>
+          <h1>لوحة التحكم</h1>
+          <p>مرحباً بك {user?.fullName}، هذه نظرة عامة على أدائك والمهام.</p>
+        </div>
       </div>
+      
+      {/* Tips / FAQ Section */}
+      {faqText && (
+        <motion.div className="glass-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ padding: '1.25rem', marginBottom: '2rem', borderLeft: '4px solid #22c55e', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+          <MessageCircleQuestion size={24} color="#22c55e" style={{ flexShrink: 0 }} />
+          <div>
+            <h4 style={{ margin: '0 0 0.25rem 0', color: '#22c55e' }}>تلميح مفيد</h4>
+            <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+              {faqText}
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
         <motion.div className="glass-card" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
