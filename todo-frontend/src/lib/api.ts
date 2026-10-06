@@ -1,7 +1,8 @@
 // src/lib/api.ts
 import axios from 'axios';
+import { useAuthStore } from '../store/authStore';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5206/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5168/api';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -38,8 +39,7 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${token}`;
         return api(originalRequest);
       } catch {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        useAuthStore.getState().clearAuth();
         window.location.href = '/login';
       }
     }

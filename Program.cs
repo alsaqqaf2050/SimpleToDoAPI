@@ -26,6 +26,8 @@ using SimpleToDoAPI.Data.Seeders;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using Serilog;
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -237,6 +239,12 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddHealthChecks()
     .AddSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")!);
 
+builder.Services.AddHealthChecksUI(setup =>
+{
+    setup.AddHealthCheckEndpoint("Todo API", "/health");
+    setup.SetEvaluationTimeInSeconds(30);
+}).AddInMemoryStorage();
+
 // ─── Application Services ─────────────────────────────────────
 builder.Services.AddScoped<ITodoService, TodoService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -307,7 +315,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Health Check endpoint
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = _ => true,
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
+
+app.MapHealthChecksUI(options =>
+{
+    options.UIPath = "/health-ui";
+});
 
 app.MapControllers();
 
