@@ -109,6 +109,18 @@ namespace SimpleToDoAPI.Services.Auth
 
             if (user == null)
             {
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    Action = "FailedLogin",
+                    EntityName = "Auth",
+                    EntityId = "Unknown",
+                    UserName = dto.UserName,
+                    UserId = "Unknown",
+                    OldValues = "User not found",
+                    CreatedOn = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+
                 return new AuthResponseDto
                 {
                     IsSuccess = false,
@@ -120,6 +132,18 @@ namespace SimpleToDoAPI.Services.Auth
 
             if (!validPassword)
             {
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    Action = "FailedLogin",
+                    EntityName = "Auth",
+                    EntityId = user.Id,
+                    UserName = user.UserName,
+                    UserId = user.Id,
+                    OldValues = "Failed password attempt",
+                    CreatedOn = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+
                 return new AuthResponseDto
                 {
                     IsSuccess = false,

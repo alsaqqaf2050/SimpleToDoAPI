@@ -1,8 +1,54 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { auditService } from '../services/auditService';
-import { ShieldAlert, Activity, Filter } from 'lucide-react';
+import { systemService } from '../services/systemService';
+import { ShieldAlert, Activity, Filter, Power } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+function MaintenanceToggle() {
+  const queryClient = useQueryClient();
+  
+  const { data, isLoading } = useQuery({
+    queryKey: ['maintenance-status'],
+    queryFn: () => systemService.getMaintenanceStatus(),
+  });
+
+  const mutation = useMutation({
+    mutationFn: (newStatus: boolean) => systemService.toggleMaintenanceMode(newStatus),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['maintenance-status'] });
+    }
+  });
+
+  if (isLoading) return <div className="skeleton" style={{ height: 60, marginBottom: '1.5rem' }} />;
+
+  const isMaintenanceMode = data?.isMaintenanceMode || false;
+
+  return (
+    <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: isMaintenanceMode ? '1px solid var(--color-warning)' : undefined }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: isMaintenanceMode ? 'rgba(234, 179, 8, 0.1)' : 'rgba(34, 197, 94, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Power size={24} color={isMaintenanceMode ? 'var(--color-warning)' : 'var(--color-success)'} />
+        </div>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '1.1rem' }}>وضع الصيانة (Maintenance Mode)</h3>
+          <p style={{ margin: '0.25rem 0 0', color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
+            {isMaintenanceMode 
+              ? 'النظام حالياً في وضع الصيانة. لا يمكن للمستخدمين العاديين تسجيل الدخول.'
+              : 'النظام يعمل بشكل طبيعي. جميع المستخدمين يمكنهم الوصول.'}
+          </p>
+        </div>
+      </div>
+      <button 
+        className={`btn ${isMaintenanceMode ? 'btn-ghost' : 'btn-danger'}`}
+        onClick={() => mutation.mutate(!isMaintenanceMode)}
+        disabled={mutation.isPending}
+      >
+        {mutation.isPending ? 'جاري التغيير...' : isMaintenanceMode ? 'إيقاف الصيانة' : 'تفعيل الصيانة'}
+      </button>
+    </div>
+  );
+}
 
 export default function SystemSecurity() {
   const [page, setPage] = useState(1);
@@ -39,10 +85,14 @@ export default function SystemSecurity() {
             <option value="Create">إنشاء (Create)</option>
             <option value="Update">تحديث (Update)</option>
             <option value="Delete">حذف (Delete)</option>
-            <option value="Login">تسجيل دخول (Login)</option>
+            <option value="Login">تسجيل دخول ناجح (Login)</option>
+            <option value="FailedLogin">فشل تسجيل الدخول (FailedLogin)</option>
           </select>
         </div>
       </div>
+
+      <MaintenanceToggle />
+
 
       <div className="glass-card" style={{ overflowX: 'auto' }}>
         {isLoading ? (

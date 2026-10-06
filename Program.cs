@@ -291,6 +291,7 @@ using (var scope = app.Services.CreateScope())
 
 // ─── Middleware Pipeline ───────────────────────────────────────
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseMiddleware<SimpleToDoAPI.Middlewares.MaintenanceMiddleware>();
 
 app.UseSerilogRequestLogging();
 

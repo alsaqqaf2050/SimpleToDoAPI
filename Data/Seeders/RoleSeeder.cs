@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 
 namespace SimpleToDoAPI.Data.Seeders
 {
@@ -10,6 +10,8 @@ namespace SimpleToDoAPI.Data.Seeders
             string[] roles =
             {
                 "Admin",
+                "Manager",
+                "Support",
                 "User"
             };
 

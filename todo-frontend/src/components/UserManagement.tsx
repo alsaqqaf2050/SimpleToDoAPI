@@ -6,6 +6,7 @@ import { Shield, Trash2, AlertCircle, Ban, Search, Download, CheckCircle, Activi
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
+import { roleService } from '../services/roleService';
 import type { AppUser } from '../types';
 
 export default function UserManagement() {
@@ -15,6 +16,14 @@ export default function UserManagement() {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUserForActivity, setSelectedUserForActivity] = useState<AppUser | null>(null);
+  const [selectedUserForRole, setSelectedUserForRole] = useState<AppUser | null>(null);
+
+  // Fetch roles
+  const { data: rolesData } = useQuery({
+    queryKey: ['roles'],
+    queryFn: () => roleService.getRoles()
+  });
+  const availableRoles = rolesData?.data ?? [];
 
   // Fetch users (fetching 100 for client-side search simulation, or just sticking to 10 with limited search)
   // To provide "real-time" search as requested, let's fetch a larger page size (e.g. 50) and search client-side.
@@ -47,13 +56,14 @@ export default function UserManagement() {
     onError: (err: any) => toast.error(err.response?.data?.message || 'حدث خطأ')
   });
 
-  const promoteMutation = useMutation({
-    mutationFn: (userId: string) => userService.promoteToAdmin(userId),
+  const assignRoleMutation = useMutation({
+    mutationFn: ({ userId, roleName }: { userId: string; roleName: string }) => userService.assignRole(userId, roleName),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('تم ترقية المستخدم إلى مدير بنجاح');
+      toast.success('تم تعيين الصلاحية للمستخدم بنجاح');
+      setSelectedUserForRole(null);
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'حدث خطأ أثناء الترقية')
+    onError: (err: any) => toast.error(err.response?.data?.message || 'حدث خطأ أثناء تعيين الصلاحية')
   });
 
   const deleteMutation = useMutation({
@@ -182,13 +192,8 @@ export default function UserManagement() {
                         <>
                           <button
                             className="icon-btn"
-                            onClick={() => {
-                              if(confirm(`هل أنت متأكد من ترقية ${u.fullName} إلى مدير؟`)){
-                                promoteMutation.mutate(u.id);
-                              }
-                            }}
-                            disabled={u.roles.includes('Admin') || promoteMutation.isPending}
-                            data-tooltip="ترقية كمدير"
+                            onClick={() => setSelectedUserForRole(u)}
+                            data-tooltip="تغيير الصلاحيات"
                             style={{ color: '#8b5cf6', background: 'rgba(139, 92, 246, 0.1)' }}
                           >
                             <Shield size={16} />
@@ -262,6 +267,15 @@ export default function UserManagement() {
         {selectedUserForActivity && (
           <UserActivityModal user={selectedUserForActivity} onClose={() => setSelectedUserForActivity(null)} />
         )}
+        {selectedUserForRole && (
+          <RoleAssignModal 
+            user={selectedUserForRole} 
+            availableRoles={availableRoles}
+            onClose={() => setSelectedUserForRole(null)} 
+            onAssign={(roleName) => assignRoleMutation.mutate({ userId: selectedUserForRole.id, roleName })}
+            isPending={assignRoleMutation.isPending}
+          />
+        )}
       </AnimatePresence>
     </div>
   );
@@ -322,6 +336,59 @@ function UserActivityModal({ user, onClose }: { user: AppUser, onClose: () => vo
               لا توجد نشاطات مسجلة لهذا المستخدم.
             </div>
           )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function RoleAssignModal({ user, availableRoles, onClose, onAssign, isPending }: { user: AppUser, availableRoles: any[], onClose: () => void, onAssign: (role: string) => void, isPending: boolean }) {
+  const [selectedRole, setSelectedRole] = useState('');
+
+  return (
+    <div className="modal-overlay" onClick={onClose} style={{
+      position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', 
+      background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+    }}>
+      <motion.div 
+        className="glass-card" 
+        onClick={e => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        style={{ width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column' }}
+      >
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontSize: '1.25rem', margin: 0 }}>تغيير الصلاحيات</h2>
+          <button className="icon-btn" onClick={onClose}><X size={20} /></button>
+        </div>
+        <div style={{ padding: '1.5rem' }}>
+          <p style={{ marginBottom: '1rem', color: 'var(--color-text-secondary)' }}>اختر الصلاحية للمستخدم <strong>{user.fullName}</strong>:</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {availableRoles.map(role => (
+              <label key={role.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', padding: '0.5rem', background: 'var(--color-bg-elevated)', borderRadius: '8px' }}>
+                <input 
+                  type="radio" 
+                  name="role" 
+                  value={role.name} 
+                  checked={selectedRole === role.name || (!selectedRole && user.roles.includes(role.name))} 
+                  onChange={(e) => setSelectedRole(e.target.value)} 
+                />
+                {role.name}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+          <button className="btn btn-ghost" onClick={onClose}>إلغاء</button>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => onAssign(selectedRole)} 
+            disabled={!selectedRole || isPending || user.roles.includes(selectedRole)}
+          >
+            {isPending ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+          </button>
         </div>
       </motion.div>
     </div>

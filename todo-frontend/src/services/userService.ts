@@ -19,8 +19,8 @@ export const userService = {
     return res.data;
   },
 
-  promoteToAdmin: async (userId: string) => {
-    const res = await api.post<ApiResponse<any>>('/roles/assign-user', { userId, roleName: 'Admin' });
+  assignRole: async (userId: string, roleName: string) => {
+    const res = await api.post<ApiResponse<any>>('/roles/assign-user', { userId, roleName });
     return res.data;
   },
 };
