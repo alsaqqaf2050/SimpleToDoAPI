@@ -182,10 +182,10 @@ namespace SimpleToDoAPI.Services.Auth
 
 
             // بدل تخزين permissions داخل التوكن: نقوم بإنشاء ال Permission Cache Service
-            //foreach (var role in roles)
-            //{
-            //    userClaims.Add(new Claim(ClaimTypes.Role, role));
-            //}
+            foreach (var role in roles)
+            {
+                userClaims.Add(new Claim(ClaimTypes.Role, role));
+            }
 
 
             ////    إضافة Permissions داخل JWT.
