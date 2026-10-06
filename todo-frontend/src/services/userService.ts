@@ -13,4 +13,14 @@ export const userService = {
   delete: async (id: string) => {
     await api.delete(`/users/${id}`);
   },
+
+  update: async (id: string, data: { fullName: string; email: string; isActive: boolean }) => {
+    const res = await api.put<ApiResponse<AppUser>>(`/users/${id}`, data);
+    return res.data;
+  },
+
+  promoteToAdmin: async (userId: string) => {
+    const res = await api.post<ApiResponse<any>>('/roles/assign-user', { userId, roleName: 'Admin' });
+    return res.data;
+  },
 };

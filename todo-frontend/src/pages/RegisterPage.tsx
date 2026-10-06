@@ -29,7 +29,7 @@ export default function RegisterPage() {
   };
 
   const registerMutation = useMutation({
-    mutationFn: () => authService.register(form),
+    mutationFn: () => authService.register({ ...form, userName: form.email.split('@')[0] }),
     onSuccess: (data) => {
       if (!data.isSuccess) {
         toast.error(data.message || 'فشل إنشاء الحساب');
